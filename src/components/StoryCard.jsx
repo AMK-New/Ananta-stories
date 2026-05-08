@@ -1,0 +1,33 @@
+import { Link } from 'react-router-dom';
+
+const StoryCard = ({ story }) => {
+  return (
+    <div className="bg-white rounded-lg shadow-lg overflow-hidden transition-transform duration-300 hover:scale-105">
+      <img 
+        src={story.image} 
+        alt={story.title} 
+        className="w-full h-48 object-cover"
+        onError={(e) => { e.currentTarget.src = 'https://placehold.co/800x600?text=Story+Image'; }}
+      />
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">
+            {story.category}
+          </span>
+        </div>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">{story.title}</h3>
+        <p className="text-gray-600 mb-4 line-clamp-3">
+          {story.description}
+        </p>
+        <Link 
+          to={`/story/${story.id}`}
+          className="inline-block bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors"
+        >
+          Read Story
+        </Link>
+      </div>
+    </div>
+  );
+};
+
+export default StoryCard;
