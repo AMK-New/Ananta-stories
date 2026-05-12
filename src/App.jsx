@@ -10,6 +10,7 @@ import AdminEditor from './pages/AdminEditor';
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import Reels from './pages/Reels';
+import Contact from './pages/Contact';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
                 <Route path="/story/:id" element={<StoryDetail />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/reels" element={<Reels />} />
+                <Route path="/contact" element={<Contact />} />
                 
                 {/* Protected Admin Routes */}
                 <Route 
@@ -56,7 +58,10 @@ function App() {
             <footer className="bg-gray-800 text-white py-8">
               <div className="max-w-7xl mx-auto px-4 text-center">
                 <p>&copy; 2024 Ananta Stories. All rights reserved.</p>
-                <div className="mt-4">
+                <div className="mt-4 flex justify-center space-x-6">
+                  <Link to="/contact" className="text-gray-400 hover:text-white text-sm transition-colors">
+                    Contact Us
+                  </Link>
                   <Link to="/admin" className="text-gray-400 hover:text-white text-sm transition-colors">
                     Admin Portal
                   </Link>
