@@ -31,6 +31,12 @@ export const StoryProvider = ({ children }) => {
     return savedContact ? JSON.parse(savedContact) : initialContactInfo;
   });
 
+  // Initialize visitor count from localStorage
+  const [visitorCount, setVisitorCount] = useState(() => {
+    const savedCount = localStorage.getItem('story-app-visitors');
+    return savedCount ? parseInt(savedCount) : 0;
+  });
+
   // Save stories to localStorage
   useEffect(() => {
     localStorage.setItem('story-app-data', JSON.stringify(stories));
@@ -40,6 +46,11 @@ export const StoryProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('story-app-contact', JSON.stringify(contactInfo));
   }, [contactInfo]);
+
+  // Save visitor count to localStorage
+  useEffect(() => {
+    localStorage.setItem('story-app-visitors', visitorCount.toString());
+  }, [visitorCount]);
 
   const addStory = (newStory) => {
     setStories(prev => [
@@ -66,6 +77,10 @@ export const StoryProvider = ({ children }) => {
     setContactInfo(newInfo);
   };
 
+  const incrementVisitors = () => {
+    setVisitorCount(prev => prev + 1);
+  };
+
   return (
     <StoryContext.Provider value={{ 
       stories, 
@@ -74,7 +89,9 @@ export const StoryProvider = ({ children }) => {
       deleteStory, 
       getStory,
       contactInfo,
-      updateContactInfo
+      updateContactInfo,
+      visitorCount,
+      incrementVisitors
     }}>
       {children}
     </StoryContext.Provider>
