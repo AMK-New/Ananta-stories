@@ -32,6 +32,18 @@ const Hero = ({ stories }) => {
         className="absolute inset-0 bg-cover bg-center transition-all duration-700 ease-in-out"
         style={{ backgroundImage: `url(${currentStory.image})` }}
       >
+        {/* Fallback for background image if it fails to load */}
+        <img 
+          src={currentStory.image} 
+          alt="" 
+          className="hidden" 
+          onError={(e) => {
+            const container = e.currentTarget.parentElement;
+            if (container) {
+              container.style.backgroundImage = "url('https://placehold.co/1200x800?text=Story+Image')";
+            }
+          }}
+        />
         <div className="absolute inset-0 bg-black/60"></div>
       </div>
 

@@ -22,7 +22,20 @@ export const StoryProvider = ({ children }) => {
   // Initialize stories from localStorage
   const [stories, setStories] = useState(() => {
     const savedStories = localStorage.getItem('story-app-data');
-    return savedStories ? JSON.parse(savedStories) : initialStories;
+    if (savedStories) {
+      let parsed = JSON.parse(savedStories);
+      // Migrate old Unsplash URLs to Picsum to avoid ORB errors
+      let needsUpdate = false;
+      const migrated = parsed.map(story => {
+        if (story.image && story.image.includes('unsplash.com')) {
+          needsUpdate = true;
+          return { ...story, image: `https://picsum.photos/seed/${story.id}/1200/800` };
+        }
+        return story;
+      });
+      return migrated;
+    }
+    return initialStories;
   });
 
   // Initialize contact info from localStorage
