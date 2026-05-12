@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useStories } from '../context/StoryContext';
+import { Upload, Link as LinkIcon, Image as ImageIcon, X } from 'lucide-react';
 
 const AdminEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addStory, updateStory, getStory } = useStories();
+  const [imageType, setImageType] = useState('url'); // 'url' or 'upload'
   
   const [formData, setFormData] = useState({
     title: '',
@@ -20,6 +22,10 @@ const AdminEditor = () => {
       const story = getStory(id);
       if (story) {
         setFormData(story);
+        // If image starts with data: it's likely an upload
+        if (story.image && story.image.startsWith('data:')) {
+          setImageType('upload');
+        }
       }
     }
   }, [id, getStory]);
@@ -42,6 +48,28 @@ const AdminEditor = () => {
     }));
   };
 
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit for localStorage
+        alert('Image size too large! Please choose an image smaller than 2MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({
+          ...prev,
+          image: reader.result
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setFormData(prev => ({ ...prev, image: '' }));
+  };
+
   const categories = ["Mystery", "Romance", "Thriller", "History"];
 
   return (
@@ -51,81 +79,145 @@ const AdminEditor = () => {
           {id ? 'Edit Story' : 'Add New Story'}
         </h1>
         
-        <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-6 border border-gray-200">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Title</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
             <input
               type="text"
               name="title"
               required
               value={formData.title}
               onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+              placeholder="Enter story title"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2.5 border"
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Category</label>
-            <select
-              name="category"
-              value={formData.category}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-            >
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <select
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2.5 border bg-white"
+              >
+                {categories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Image Method</label>
+              <div className="flex p-1 bg-gray-100 rounded-lg mt-1">
+                <button
+                  type="button"
+                  onClick={() => setImageType('url')}
+                  className={`flex-1 flex items-center justify-center py-1.5 px-3 rounded-md text-xs font-medium transition-all ${
+                    imageType === 'url' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <LinkIcon className="w-3.5 h-3.5 mr-1.5" />
+                  URL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageType('upload')}
+                  className={`flex-1 flex items-center justify-center py-1.5 px-3 rounded-md text-xs font-medium transition-all ${
+                    imageType === 'upload' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Upload className="w-3.5 h-3.5 mr-1.5" />
+                  Upload
+                </button>
+              </div>
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Image URL</label>
-            <input
-              type="url"
-              name="image"
-              required
-              value={formData.image}
-              onChange={handleChange}
-              placeholder="https://example.com/image.jpg"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Story Cover Image</label>
+            {imageType === 'url' ? (
+              <input
+                type="url"
+                name="image"
+                required
+                value={formData.image.startsWith('data:') ? '' : formData.image}
+                onChange={handleChange}
+                placeholder="https://images.unsplash.com/..."
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2.5 border"
+              />
+            ) : (
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-indigo-400 transition-colors bg-gray-50">
+                <div className="space-y-1 text-center">
+                  <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <div className="flex text-sm text-gray-600">
+                    <label className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 px-2 py-0.5">
+                      <span>Upload a file</span>
+                      <input type="file" className="sr-only" accept="image/*" onChange={handleFileUpload} />
+                    </label>
+                    <p className="pl-1">or drag and drop</p>
+                  </div>
+                  <p className="text-xs text-gray-500">PNG, JPG, GIF up to 2MB</p>
+                </div>
+              </div>
+            )}
+            
+            {formData.image && (
+              <div className="mt-4 relative inline-block">
+                <img
+                  src={formData.image}
+                  alt="Preview"
+                  className="h-32 w-48 object-cover rounded-lg border border-gray-200 shadow-sm"
+                />
+                <button
+                  type="button"
+                  onClick={removeImage}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Description (Short Summary)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description (Short Summary)</label>
             <textarea
               name="description"
               required
               rows={3}
               value={formData.description}
               onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+              placeholder="Give a brief summary of the story..."
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2.5 border"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Full Content</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Full Content</label>
             <textarea
               name="content"
               required
               rows={10}
               value={formData.content}
               onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+              placeholder="Write the full story here..."
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2.5 border"
             />
           </div>
 
-          <div className="flex justify-end space-x-3">
+          <div className="flex justify-end space-x-3 pt-6 border-t">
             <button
               type="button"
               onClick={() => navigate('/admin')}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="px-6 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+              className="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               {id ? 'Update Story' : 'Create Story'}
             </button>
