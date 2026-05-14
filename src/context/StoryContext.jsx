@@ -90,6 +90,19 @@ export const StoryProvider = ({ children }) => {
     setContactInfo(newInfo);
   };
 
+  const importData = (jsonData) => {
+    try {
+      const data = JSON.parse(jsonData);
+      if (Array.isArray(data)) {
+        setStories(data);
+        return { success: true, message: 'Stories imported successfully!' };
+      }
+      return { success: false, message: 'Invalid data format. Expected an array of stories.' };
+    } catch (error) {
+      return { success: false, message: 'Failed to parse JSON data.' };
+    }
+  };
+
   const incrementVisitors = () => {
     setVisitorCount(prev => prev + 1);
   };
@@ -104,7 +117,8 @@ export const StoryProvider = ({ children }) => {
       contactInfo,
       updateContactInfo,
       visitorCount,
-      incrementVisitors
+      incrementVisitors,
+      importData
     }}>
       {children}
     </StoryContext.Provider>

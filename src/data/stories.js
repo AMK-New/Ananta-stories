@@ -46,5 +46,13 @@ export const stories = [
     image: "https://picsum.photos/seed/vineyard-6/1200/800",
     description: "A city girl inherits a vineyard and clashes with the rugged caretaker.",
     content: "Elena looked at the sprawling vines. 'I'm selling it,' she declared. Mateo, the estate manager, crossed his arms. 'You can't. Your grandfather put his soul into this land.' As the sun set, casting a golden glow over the hills, Elena realized that maybe, just maybe, she wasn't just fighting him, but her own heart..."
+  },
+  {
+    id: 7,
+    title: "Detective Bobby from Hyderabad",
+    category: "Mystery",
+    image: "https://picsum.photos/seed/bobby-7/1200/800",
+    description: "A sharp-witted detective in Hyderabad tackles a case that leads him through the historic Charminar lanes.",
+    content: "Detective Bobby adjusted his aviators as the scent of Irani Chai filled the air. Hyderabad was a city of secrets, and tonight, one was about to be revealed in the shadows of the Charminar. 'The biryani can wait,' he muttered to his assistant, 'the truth cannot.'..."
   }
 ];

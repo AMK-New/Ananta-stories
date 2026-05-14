@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStories } from '../context/StoryContext';
-import { Plus, Edit, Trash2, Settings, MessageSquare, Save, BarChart3, Users, BookOpen } from 'lucide-react';
+import { Plus, Edit, Trash2, Settings, MessageSquare, Save, BarChart3, Users, BookOpen, Download, Upload, Copy, Check } from 'lucide-react';
 
 const AdminDashboard = () => {
-  const { stories, deleteStory, contactInfo, updateContactInfo, visitorCount } = useStories();
+  const { stories, deleteStory, contactInfo, updateContactInfo, visitorCount, importData } = useStories();
   const [activeTab, setActiveTab] = useState('stories');
   const [contactForm, setContactForm] = useState(contactInfo);
   const [saveStatus, setSaveStatus] = useState('');
+  const [importJson, setImportJson] = useState('');
+  const [copySuccess, setCopySuccess] = useState(false);
 
   const handleDelete = (id) => {
     if (window.confirm('Are you sure you want to delete this story?')) {
@@ -20,6 +22,21 @@ const AdminDashboard = () => {
     updateContactInfo(contactForm);
     setSaveStatus('Settings saved successfully!');
     setTimeout(() => setSaveStatus(''), 3000);
+  };
+
+  const handleImport = () => {
+    if (window.confirm('Warning: Importing data will overwrite your current stories on this device. Continue?')) {
+      const result = importData(importJson);
+      setSaveStatus(result.message);
+      if (result.success) setImportJson('');
+      setTimeout(() => setSaveStatus(''), 5000);
+    }
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(JSON.stringify(stories, null, 2));
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2000);
   };
 
   const stats = [
@@ -55,6 +72,17 @@ const AdminDashboard = () => {
             >
               <BarChart3 className="w-4 h-4 mr-2" />
               Analytics
+            </button>
+            <button
+              onClick={() => setActiveTab('sync')}
+              className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'sync' 
+                  ? 'bg-indigo-600 text-white shadow-sm' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Sync Data
             </button>
             <button
               onClick={() => setActiveTab('contact')}
@@ -183,6 +211,64 @@ const AdminDashboard = () => {
                 * Traffic data is currently tracked per browser session using local storage. 
                 In a production environment with a backend, this would show global unique visitors.
               </p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'sync' && (
+          <div className="space-y-6">
+            <div className="bg-white shadow rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2 flex items-center">
+                <Download className="w-5 h-5 mr-2 text-indigo-600" />
+                Export Data (Sync to Mobile)
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Since stories are saved in your browser's local memory, you need to manually move them to see updates on other devices (like your phone).
+              </p>
+              <div className="relative">
+                <div className="bg-gray-900 rounded-lg p-4 font-mono text-xs text-indigo-300 overflow-auto max-h-40">
+                  <pre>{JSON.stringify(stories, null, 2)}</pre>
+                </div>
+                <button
+                  onClick={copyToClipboard}
+                  className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white p-2 rounded-md transition-colors"
+                  title="Copy JSON to clipboard"
+                >
+                  {copySuccess ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-gray-400">
+                1. Click the copy icon above. 2. Open the Admin Portal on your mobile. 3. Paste the code into the "Import" box below.
+              </p>
+            </div>
+
+            <div className="bg-white shadow rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2 flex items-center">
+                <Upload className="w-5 h-5 mr-2 text-indigo-600" />
+                Import Data
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Paste the JSON data from your other device here to sync your stories.
+              </p>
+              <textarea
+                value={importJson}
+                onChange={(e) => setImportJson(e.target.value)}
+                placeholder='Paste story JSON here...'
+                className="w-full h-40 p-3 font-mono text-xs border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+              />
+              <div className="mt-4 flex items-center justify-between">
+                <span className={`text-sm font-medium ${saveStatus.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
+                  {saveStatus}
+                </span>
+                <button
+                  onClick={handleImport}
+                  disabled={!importJson}
+                  className="inline-flex items-center px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Import & Overwrite
+                </button>
+              </div>
             </div>
           </div>
         )}
