@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useStories } from '../context/StoryContext';
-import { Upload, Link as LinkIcon, Image as ImageIcon, X } from 'lucide-react';
+import { Upload, Link as LinkIcon, Image as ImageIcon, X, Loader2 } from 'lucide-react';
+import { storage } from '../firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 const AdminEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addStory, updateStory, getStory } = useStories();
   const [imageType, setImageType] = useState('url'); // 'url' or 'upload'
+  const [uploading, setUploading] = useState(false);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -22,20 +25,20 @@ const AdminEditor = () => {
       const story = getStory(id);
       if (story) {
         setFormData(story);
-        // If image starts with data: it's likely an upload
-        if (story.image && story.image.startsWith('data:')) {
+        // If image URL is from Firebase storage or is a base64, consider it an upload
+        if (story.image && (story.image.includes('firebasestorage') || story.image.startsWith('data:'))) {
           setImageType('upload');
         }
       }
     }
   }, [id, getStory]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (id) {
-      updateStory(parseInt(id), formData);
+      await updateStory(parseInt(id), formData);
     } else {
-      addStory(formData);
+      await addStory(formData);
     }
     navigate('/admin');
   };
@@ -51,18 +54,34 @@ const AdminEditor = () => {
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit for localStorage
-        alert('Image size too large! Please choose an image smaller than 2MB.');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({
-          ...prev,
-          image: reader.result
-        }));
-      };
-      reader.readAsDataURL(file);
+      // 1. Show uploading state
+      setUploading(true);
+
+      // 2. Create a storage reference
+      const storageRef = ref(storage, `story-images/${Date.now()}_${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      // 3. Monitor upload
+      uploadTask.on('state_changed', 
+        (snapshot) => {
+          // You could track progress here if needed
+        }, 
+        (error) => {
+          console.error("Upload failed:", error);
+          setUploading(false);
+          alert("Image upload failed. Please try again.");
+        }, 
+        () => {
+          // 4. Handle successful upload
+          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            setFormData(prev => ({
+              ...prev,
+              image: downloadURL
+            }));
+            setUploading(false);
+          });
+        }
+      );
     }
   };
 
@@ -142,7 +161,7 @@ const AdminEditor = () => {
                 type="url"
                 name="image"
                 required
-                value={formData.image.startsWith('data:') ? '' : formData.image}
+                value={formData.image && !formData.image.includes('firebasestorage') ? formData.image : ''}
                 onChange={handleChange}
                 placeholder="https://images.unsplash.com/..."
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2.5 border"
@@ -150,15 +169,24 @@ const AdminEditor = () => {
             ) : (
               <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-indigo-400 transition-colors bg-gray-50">
                 <div className="space-y-1 text-center">
-                  <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
-                  <div className="flex text-sm text-gray-600">
-                    <label className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 px-2 py-0.5">
-                      <span>Upload a file</span>
-                      <input type="file" className="sr-only" accept="image/*" onChange={handleFileUpload} />
-                    </label>
-                    <p className="pl-1">or drag and drop</p>
-                  </div>
-                  <p className="text-xs text-gray-500">PNG, JPG, GIF up to 2MB</p>
+                  {uploading ? (
+                    <div className="flex flex-col items-center">
+                      <Loader2 className="h-12 w-12 text-indigo-600 animate-spin" />
+                      <p className="mt-2 text-sm text-gray-600">Uploading to Firebase...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+                      <div className="flex text-sm text-gray-600">
+                        <label className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 px-2 py-0.5">
+                          <span>Upload a file</span>
+                          <input type="file" className="sr-only" accept="image/*" onChange={handleFileUpload} />
+                        </label>
+                        <p className="pl-1">or drag and drop</p>
+                      </div>
+                      <p className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
+                    </>
+                  )}
                 </div>
               </div>
             )}

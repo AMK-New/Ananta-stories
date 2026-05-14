@@ -1,5 +1,20 @@
 import { createContext, useState, useContext, useEffect } from 'react';
 import { stories as initialStories } from '../data/stories';
+import { db } from '../firebase';
+import { 
+  collection, 
+  getDocs, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  onSnapshot,
+  query,
+  orderBy,
+  setDoc,
+  getDoc,
+  increment
+} from 'firebase/firestore';
 
 const StoryContext = createContext();
 
@@ -19,92 +34,140 @@ export const useStories = () => {
 };
 
 export const StoryProvider = ({ children }) => {
-  // Initialize stories from localStorage
-  const [stories, setStories] = useState(() => {
-    const savedStories = localStorage.getItem('story-app-data');
-    if (savedStories) {
-      let parsed = JSON.parse(savedStories);
-      // Migrate old Unsplash URLs to Picsum to avoid ORB errors
-      let needsUpdate = false;
-      const migrated = parsed.map(story => {
-        if (story.image && story.image.includes('unsplash.com')) {
-          needsUpdate = true;
-          return { ...story, image: `https://picsum.photos/seed/${story.id}/1200/800` };
-        }
-        return story;
+  const [stories, setStories] = useState([]);
+  const [contactInfo, setContactInfo] = useState(initialContactInfo);
+  const [visitorCount, setVisitorCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  // Real-time listener for stories
+  useEffect(() => {
+    const q = query(collection(db, "stories"), orderBy("id", "desc"));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const storiesArray = [];
+      querySnapshot.forEach((doc) => {
+        storiesArray.push({ ...doc.data(), firebaseId: doc.id });
       });
-      return migrated;
+      
+      // If no stories in Firebase, use initialStories and seed them
+      if (storiesArray.length === 0 && loading) {
+        seedInitialData();
+      } else {
+        setStories(storiesArray);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Real-time listener for contact info and visitors
+  useEffect(() => {
+    const unsubContact = onSnapshot(doc(db, "settings", "contact"), (doc) => {
+      if (doc.exists()) {
+        setContactInfo(doc.data());
+      } else {
+        // Seed initial contact info if it doesn't exist
+        setDoc(doc.ref, initialContactInfo);
+      }
+    });
+
+    const unsubStats = onSnapshot(doc(db, "settings", "stats"), (doc) => {
+      if (doc.exists()) {
+        setVisitorCount(doc.data().visitorCount || 0);
+      } else {
+        // Seed initial stats if it doesn't exist
+        setDoc(doc.ref, { visitorCount: 0 });
+      }
+    });
+
+    return () => {
+      unsubContact();
+      unsubStats();
+    };
+  }, []);
+
+  const seedInitialData = async () => {
+    console.log("Seeding initial stories to Firebase...");
+    for (const story of initialStories) {
+      await addDoc(collection(db, "stories"), story);
     }
-    return initialStories;
-  });
-
-  // Initialize contact info from localStorage
-  const [contactInfo, setContactInfo] = useState(() => {
-    const savedContact = localStorage.getItem('story-app-contact');
-    return savedContact ? JSON.parse(savedContact) : initialContactInfo;
-  });
-
-  // Initialize visitor count from localStorage
-  const [visitorCount, setVisitorCount] = useState(() => {
-    const savedCount = localStorage.getItem('story-app-visitors');
-    return savedCount ? parseInt(savedCount) : 0;
-  });
-
-  // Save stories to localStorage
-  useEffect(() => {
-    localStorage.setItem('story-app-data', JSON.stringify(stories));
-  }, [stories]);
-
-  // Save contact info to localStorage
-  useEffect(() => {
-    localStorage.setItem('story-app-contact', JSON.stringify(contactInfo));
-  }, [contactInfo]);
-
-  // Save visitor count to localStorage
-  useEffect(() => {
-    localStorage.setItem('story-app-visitors', visitorCount.toString());
-  }, [visitorCount]);
-
-  const addStory = (newStory) => {
-    setStories(prev => [
-      ...prev, 
-      { ...newStory, id: Date.now() }
-    ]);
   };
 
-  const updateStory = (id, updatedData) => {
-    setStories(prev => prev.map(story => 
-      story.id === id ? { ...story, ...updatedData } : story
-    ));
+  const addStory = async (newStory) => {
+    try {
+      await addDoc(collection(db, "stories"), {
+        ...newStory,
+        id: Date.now(), // Still keep numeric ID for sorting
+        createdAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error adding story: ", error);
+    }
   };
 
-  const deleteStory = (id) => {
-    setStories(prev => prev.filter(story => story.id !== id));
+  const updateStory = async (id, updatedData) => {
+    try {
+      // Find the document with the matching numeric ID
+      const storyToUpdate = stories.find(s => s.id === id);
+      if (storyToUpdate && storyToUpdate.firebaseId) {
+        const storyRef = doc(db, "stories", storyToUpdate.firebaseId);
+        await updateDoc(storyRef, updatedData);
+      }
+    } catch (error) {
+      console.error("Error updating story: ", error);
+    }
+  };
+
+  const deleteStory = async (id) => {
+    try {
+      const storyToDelete = stories.find(s => s.id === id);
+      if (storyToDelete && storyToDelete.firebaseId) {
+        await deleteDoc(doc(db, "stories", storyToDelete.firebaseId));
+      }
+    } catch (error) {
+      console.error("Error deleting story: ", error);
+    }
   };
 
   const getStory = (id) => {
     return stories.find(s => s.id === parseInt(id));
   };
 
-  const updateContactInfo = (newInfo) => {
-    setContactInfo(newInfo);
-  };
-
-  const importData = (jsonData) => {
+  const updateContactInfo = async (newInfo) => {
     try {
-      const data = JSON.parse(jsonData);
-      if (Array.isArray(data)) {
-        setStories(data);
-        return { success: true, message: 'Stories imported successfully!' };
-      }
-      return { success: false, message: 'Invalid data format. Expected an array of stories.' };
+      await setDoc(doc(db, "settings", "contact"), newInfo);
     } catch (error) {
-      return { success: false, message: 'Failed to parse JSON data.' };
+      console.error("Error updating contact info: ", error);
     }
   };
 
-  const incrementVisitors = () => {
-    setVisitorCount(prev => prev + 1);
+  const incrementVisitors = async () => {
+    try {
+      const statsRef = doc(db, "settings", "stats");
+      await updateDoc(statsRef, {
+        visitorCount: increment(1)
+      });
+    } catch (error) {
+      // If update fails (doc might not exist), try setDoc
+      await setDoc(doc(db, "settings", "stats"), { visitorCount: 1 }, { merge: true });
+    }
+  };
+
+  const importData = async (jsonData) => {
+    try {
+      const data = JSON.parse(jsonData);
+      if (Array.isArray(data)) {
+        // Warning: This will add all imported stories to Firebase
+        for (const story of data) {
+          delete story.firebaseId; // Clean up old IDs if any
+          await addDoc(collection(db, "stories"), story);
+        }
+        return { success: true, message: 'Stories imported to Firebase successfully!' };
+      }
+      return { success: false, message: 'Invalid data format.' };
+    } catch (error) {
+      return { success: false, message: 'Import failed.' };
+    }
   };
 
   return (
@@ -118,7 +181,8 @@ export const StoryProvider = ({ children }) => {
       updateContactInfo,
       visitorCount,
       incrementVisitors,
-      importData
+      importData,
+      loading
     }}>
       {children}
     </StoryContext.Provider>
