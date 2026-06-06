@@ -13,8 +13,12 @@ const Navbar = () => {
   const [isMobileCategoriesOpen, setIsMobileCategoriesOpen] = useState(false);
   const dropdownRef = useRef(null);
   
-  // Filter out "Cine Updates" from categories dropdown since it's a separate link
-  const dropdownCategories = categories.filter(cat => cat.name !== "Cine Updates");
+  // Filter out "Cine Updates" and "Cinema" from categories dropdown since they're separate links
+  const dropdownCategories = categories.filter(cat => cat.name !== "Cine Updates" && cat.name !== "Cinema");
+  
+  // Check if we have "Cine Updates" or "Cinema" category
+  const cineCategory = categories.find(cat => cat.name === "Cine Updates" || cat.name === "Cinema");
+  const cineLinkText = cineCategory?.name || "Cine Updates";
 
   const handleLogout = () => {
     logout();
@@ -98,13 +102,15 @@ const Navbar = () => {
               )}
             </div>
             
-            {/* Cine Updates as separate link */}
-            <Link
-              to="/category/cine-updates"
-              className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-            >
-              Cine Updates
-            </Link>
+            {/* Cine/Cinema Updates as separate link */}
+            {cineCategory && (
+              <Link
+                to={`/category/${cineCategory.name.toLowerCase().replace(/\s+/g, '-')}`}
+                className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                {cineLinkText}
+              </Link>
+            )}
 
             <Link to="/contact" className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
               Contact Us
@@ -152,14 +158,16 @@ const Navbar = () => {
             </Link>
           )}
           
-          {/* Cine Updates link */}
-          <Link
-            to="/category/cine-updates"
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
-          >
-            Cine Updates
-          </Link>
+          {/* Cine/Cinema Updates link */}
+          {cineCategory && (
+            <Link
+              to={`/category/${cineCategory.name.toLowerCase().replace(/\s+/g, '-')}`}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
+            >
+              {cineLinkText}
+            </Link>
+          )}
           
           {/* Mobile Categories Accordion */}
           <div>
