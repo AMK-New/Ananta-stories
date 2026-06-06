@@ -38,28 +38,34 @@ export const StoryProvider = ({ children }) => {
   const [contactInfo, setContactInfo] = useState(initialContactInfo);
   const [visitorCount, setVisitorCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [hasSeeded, setHasSeeded] = useState(false);
 
   // Real-time listener for stories
   useEffect(() => {
     const q = query(collection(db, "stories"), orderBy("id", "desc"));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const storiesArray = [];
-      const seenIds = new Set();
+      const seenFirebaseIds = new Set();
       
       querySnapshot.forEach((doc) => {
         const story = { ...doc.data(), firebaseId: doc.id };
         // Ensure no duplicates by checking firebaseId
-        if (!seenIds.has(story.firebaseId)) {
+        if (!seenFirebaseIds.has(story.firebaseId)) {
           storiesArray.push(story);
-          seenIds.add(story.firebaseId);
+          seenFirebaseIds.add(story.firebaseId);
         }
       });
       
       console.log(`Fetched ${storiesArray.length} unique stories from Firestore`);
+      storiesArray.forEach((story, idx) => {
+        console.log(`  Story ${idx + 1}: id=${story.id}, firebaseId=${story.firebaseId}, title="${story.title}"`);
+      });
       
-      // If no stories in Firebase, use initialStories and seed them
-      if (storiesArray.length === 0 && loading) {
+      // If no stories in Firebase and we haven't seeded yet, seed them
+      if (storiesArray.length === 0 && !hasSeeded) {
+        console.log("No stories found, starting seeding...");
         seedInitialData();
+        setHasSeeded(true);
       } else {
         setStories(storiesArray);
       }
@@ -70,7 +76,7 @@ export const StoryProvider = ({ children }) => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [hasSeeded]);
 
   // Real-time listener for contact info and visitors
   useEffect(() => {
@@ -200,6 +206,39 @@ export const StoryProvider = ({ children }) => {
     }
   }, []);
 
+  const cleanupDuplicateStories = useCallback(async () => {
+    try {
+      console.log("Starting duplicate story cleanup...");
+      const q = query(collection(db, "stories"), orderBy("id", "desc"));
+      const querySnapshot = await getDocs(q);
+      
+      const seenIds = new Set();
+      const duplicates = [];
+      
+      querySnapshot.forEach((doc) => {
+        const story = doc.data();
+        if (seenIds.has(story.id)) {
+          duplicates.push(doc.id); // firebaseId of duplicate
+        } else {
+          seenIds.add(story.id);
+        }
+      });
+      
+      console.log(`Found ${duplicates.length} duplicates to delete`);
+      
+      // Delete duplicates
+      for (const firebaseId of duplicates) {
+        console.log(`  Deleting duplicate: ${firebaseId}`);
+        await deleteDoc(doc(db, "stories", firebaseId));
+      }
+      
+      return { success: true, message: `Cleaned up ${duplicates.length} duplicate stories!` };
+    } catch (error) {
+      console.error("Error cleaning up duplicates:", error);
+      return { success: false, message: "Failed to clean up duplicates" };
+    }
+  }, []);
+
   return (
     <StoryContext.Provider value={{ 
       stories, 
@@ -212,7 +251,8 @@ export const StoryProvider = ({ children }) => {
       visitorCount,
       incrementVisitors,
       importData,
-      loading
+      loading,
+      cleanupDuplicateStories
     }}>
       {children}
     </StoryContext.Provider>

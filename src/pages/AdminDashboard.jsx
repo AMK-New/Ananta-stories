@@ -4,12 +4,13 @@ import { useStories } from '../context/StoryContext';
 import { Plus, Edit, Trash2, Settings, MessageSquare, Save, BarChart3, Users, BookOpen, Download, Upload, Copy, Check } from 'lucide-react';
 
 const AdminDashboard = () => {
-  const { stories, deleteStory, contactInfo, updateContactInfo, visitorCount, importData } = useStories();
+  const { stories, deleteStory, contactInfo, updateContactInfo, visitorCount, importData, cleanupDuplicateStories } = useStories();
   const [activeTab, setActiveTab] = useState('stories');
   const [contactForm, setContactForm] = useState(contactInfo);
   const [saveStatus, setSaveStatus] = useState('');
   const [importJson, setImportJson] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
+  const [cleaningUp, setCleaningUp] = useState(false);
 
   const handleDelete = (id) => {
     if (window.confirm('Are you sure you want to delete this story?')) {
@@ -37,6 +38,17 @@ const AdminDashboard = () => {
     navigator.clipboard.writeText(JSON.stringify(stories, null, 2));
     setCopySuccess(true);
     setTimeout(() => setCopySuccess(false), 2000);
+  };
+
+  const handleCleanupDuplicates = async () => {
+    if (!window.confirm('Are you sure you want to clean up duplicate stories?')) {
+      return;
+    }
+    setCleaningUp(true);
+    const result = await cleanupDuplicateStories();
+    setSaveStatus(result.message);
+    setTimeout(() => setSaveStatus(''), 5000);
+    setCleaningUp(false);
   };
 
   const stats = [
@@ -217,6 +229,38 @@ const AdminDashboard = () => {
 
         {activeTab === 'sync' && (
           <div className="space-y-6">
+            <div className="bg-white shadow rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2 flex items-center">
+                <Trash2 className="w-5 h-5 mr-2 text-red-600" />
+                Cleanup Duplicate Stories
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                If you're seeing duplicate stories (each appearing multiple times), click below to remove extra copies.
+              </p>
+              <div className="mt-4 flex items-center justify-between">
+                <span className={`text-sm font-medium ${saveStatus.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
+                  {saveStatus}
+                </span>
+                <button
+                  onClick={handleCleanupDuplicates}
+                  disabled={cleaningUp}
+                  className="inline-flex items-center px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 transition-colors shadow-sm"
+                >
+                  {cleaningUp ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Cleaning Up...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Clean Up Duplicates
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
             <div className="bg-white shadow rounded-lg border border-gray-200 p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-2 flex items-center">
                 <Download className="w-5 h-5 mr-2 text-indigo-600" />
