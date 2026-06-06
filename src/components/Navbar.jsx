@@ -2,15 +2,19 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Settings, LogOut, ChevronDown, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useStories } from '../context/StoryContext';
 
 const Navbar = () => {
-  const categories = ["Mystery", "Romance", "Thriller", "History"];
+  const { categories } = useStories();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileCategoriesOpen, setIsMobileCategoriesOpen] = useState(false);
   const dropdownRef = useRef(null);
+  
+  // Filter out "Cine Updates" from categories dropdown since it's a separate link
+  const dropdownCategories = categories.filter(cat => cat !== "Cine Updates");
 
   const handleLogout = () => {
     logout();
@@ -78,10 +82,10 @@ const Navbar = () => {
               {isCategoriesOpen && (
                 <div className="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
                   <div className="py-1" role="menu">
-                    {categories.map((category) => (
+                    {dropdownCategories.map((category) => (
                       <Link
                         key={category}
-                        to={`/category/${category.toLowerCase()}`}
+                        to={`/category/${category.toLowerCase().replace(/\s+/g, '-')}`}
                         onClick={() => setIsCategoriesOpen(false)}
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
                         role="menuitem"
@@ -168,10 +172,10 @@ const Navbar = () => {
             </button>
             {isMobileCategoriesOpen && (
               <div className="pl-4 space-y-1 bg-gray-50 rounded-md mt-1">
-                {categories.map((category) => (
+                {dropdownCategories.map((category) => (
                   <Link
                     key={category}
-                    to={`/category/${category.toLowerCase()}`}
+                    to={`/category/${category.toLowerCase().replace(/\s+/g, '-')}`}
                     onClick={() => {
                       setIsMobileMenuOpen(false);
                       setIsMobileCategoriesOpen(false);

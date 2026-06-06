@@ -25,6 +25,8 @@ const initialContactInfo = {
   description: 'Have a story to share or a question to ask? We would love to hear from you! Reach out to us through any of the channels below.'
 };
 
+const initialCategories = ["Mystery", "Romance", "Thriller", "History", "Cine Updates"];
+
 export const useStories = () => {
   const context = useContext(StoryContext);
   if (!context) {
@@ -35,6 +37,7 @@ export const useStories = () => {
 
 export const StoryProvider = ({ children }) => {
   const [stories, setStories] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [contactInfo, setContactInfo] = useState(initialContactInfo);
   const [visitorCount, setVisitorCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -77,6 +80,20 @@ export const StoryProvider = ({ children }) => {
 
     return () => unsubscribe();
   }, [hasSeeded]);
+
+  // Real-time listener for categories
+  useEffect(() => {
+    const unsubCategories = onSnapshot(doc(db, "settings", "categories"), (doc) => {
+      if (doc.exists()) {
+        setCategories(doc.data().list || []);
+      } else {
+        // Seed initial categories if it doesn't exist
+        setDoc(doc.ref, { list: initialCategories });
+      }
+    });
+
+    return () => unsubCategories();
+  }, []);
 
   // Real-time listener for contact info and visitors
   useEffect(() => {
@@ -301,9 +318,66 @@ export const StoryProvider = ({ children }) => {
     }
   }, []);
 
+  // Category management functions
+  const addCategory = useCallback(async (categoryName) => {
+    try {
+      if (categories.some(cat => cat.toLowerCase() === categoryName.toLowerCase())) {
+        return { success: false, message: "Category already exists!" };
+      }
+      const newCategories = [...categories, categoryName];
+      await setDoc(doc(db, "settings", "categories"), { list: newCategories });
+      return { success: true, message: "Category added successfully!" };
+    } catch (error) {
+      console.error("Error adding category:", error);
+      return { success: false, message: "Failed to add category" };
+    }
+  }, [categories]);
+
+  const editCategory = useCallback(async (oldName, newName) => {
+    try {
+      if (oldName === newName) {
+        return { success: false, message: "Old and new category names are the same" };
+      }
+      if (categories.some(cat => cat.toLowerCase() === newName.toLowerCase())) {
+        return { success: false, message: "Category with this name already exists!" };
+      }
+
+      // Update categories list
+      const newCategories = categories.map(cat => cat === oldName ? newName : cat);
+      await setDoc(doc(db, "settings", "categories"), { list: newCategories });
+
+      // Update all stories with the old category name
+      const storiesToUpdate = stories.filter(story => story.category === oldName);
+      for (const story of storiesToUpdate) {
+        const storyRef = doc(db, "stories", story.firebaseId);
+        await updateDoc(storyRef, { category: newName });
+      }
+
+      return { success: true, message: `Category updated! ${storiesToUpdate.length} stories updated.` };
+    } catch (error) {
+      console.error("Error editing category:", error);
+      return { success: false, message: "Failed to edit category" };
+    }
+  }, [categories, stories]);
+
+  const deleteCategory = useCallback(async (categoryName) => {
+    try {
+      if (categories.length <= 1) {
+        return { success: false, message: "You must have at least one category!" };
+      }
+      const newCategories = categories.filter(cat => cat !== categoryName);
+      await setDoc(doc(db, "settings", "categories"), { list: newCategories });
+      return { success: true, message: "Category deleted successfully!" };
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      return { success: false, message: "Failed to delete category" };
+    }
+  }, [categories]);
+
   return (
     <StoryContext.Provider value={{ 
       stories, 
+      categories,
       addStory, 
       updateStory, 
       deleteStory, 
@@ -316,7 +390,10 @@ export const StoryProvider = ({ children }) => {
       loading,
       cleanupDuplicateStories,
       toggleLike,
-      incrementViewCount
+      incrementViewCount,
+      addCategory,
+      editCategory,
+      deleteCategory
     }}>
       {children}
     </StoryContext.Provider>

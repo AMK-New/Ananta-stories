@@ -6,14 +6,14 @@ import { Upload, Link as LinkIcon, Image as ImageIcon, X, Loader2 } from 'lucide
 const AdminEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { addStory, updateStory, getStory } = useStories();
+  const { addStory, updateStory, getStory, categories } = useStories();
   const [imageType, setImageType] = useState('url'); // 'url' or 'upload'
   const [processing, setProcessing] = useState(false);
   const [newImageUrl, setNewImageUrl] = useState('');
   
   const [formData, setFormData] = useState({
     title: '',
-    category: 'Mystery',
+    category: categories.length > 0 ? categories[0] : 'Mystery',
     description: '',
     content: '',
     images: [] // Array of images instead of single image
@@ -38,8 +38,11 @@ const AdminEditor = () => {
           setImageType('upload');
         }
       }
+    } else if (categories.length > 0 && formData.category === 'Mystery') {
+      // Set default category to first available category when not editing
+      setFormData(prev => ({ ...prev, category: categories[0] }));
     }
-  }, [id, getStory]);
+  }, [id, getStory, categories]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -113,8 +116,6 @@ const AdminEditor = () => {
       images: prev.images.filter((_, i) => i !== index)
     }));
   };
-
-  const categories = ["Mystery", "Romance", "Thriller", "History", "Cine Updates"];
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">

@@ -1,16 +1,22 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStories } from '../context/StoryContext';
-import { Plus, Edit, Trash2, Settings, MessageSquare, Save, BarChart3, Users, BookOpen, Download, Upload, Copy, Check } from 'lucide-react';
+import { Plus, Edit, Trash2, Settings, MessageSquare, Save, BarChart3, Users, BookOpen, Download, Upload, Copy, Check, Tags, X } from 'lucide-react';
 
 const AdminDashboard = () => {
-  const { stories, deleteStory, contactInfo, updateContactInfo, visitorCount, importData, cleanupDuplicateStories } = useStories();
+  const { stories, deleteStory, contactInfo, updateContactInfo, visitorCount, importData, cleanupDuplicateStories, categories, addCategory, editCategory, deleteCategory } = useStories();
   const [activeTab, setActiveTab] = useState('stories');
   const [contactForm, setContactForm] = useState(contactInfo);
   const [saveStatus, setSaveStatus] = useState('');
   const [importJson, setImportJson] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
   const [cleaningUp, setCleaningUp] = useState(false);
+  
+  // Category management state
+  const [newCategory, setNewCategory] = useState('');
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [editedCategoryName, setEditedCategoryName] = useState('');
+  const [processingCategory, setProcessingCategory] = useState(false);
 
   const handleDelete = (id) => {
     if (window.confirm('Are you sure you want to delete this story?')) {
@@ -51,6 +57,47 @@ const AdminDashboard = () => {
     setCleaningUp(false);
   };
 
+  const handleAddCategory = async () => {
+    if (!newCategory.trim()) return;
+    setProcessingCategory(true);
+    const result = await addCategory(newCategory.trim());
+    setSaveStatus(result.message);
+    if (result.success) setNewCategory('');
+    setTimeout(() => setSaveStatus(''), 5000);
+    setProcessingCategory(false);
+  };
+
+  const handleEditCategory = async (categoryName) => {
+    if (editingCategory === categoryName) {
+      if (!editedCategoryName.trim()) {
+        setEditingCategory(null);
+        setEditedCategoryName('');
+        return;
+      }
+      setProcessingCategory(true);
+      const result = await editCategory(categoryName, editedCategoryName.trim());
+      setSaveStatus(result.message);
+      setEditingCategory(null);
+      setEditedCategoryName('');
+      setTimeout(() => setSaveStatus(''), 5000);
+      setProcessingCategory(false);
+    } else {
+      setEditingCategory(categoryName);
+      setEditedCategoryName(categoryName);
+    }
+  };
+
+  const handleDeleteCategory = async (categoryName) => {
+    if (!window.confirm(`Are you sure you want to delete the "${categoryName}" category?`)) {
+      return;
+    }
+    setProcessingCategory(true);
+    const result = await deleteCategory(categoryName);
+    setSaveStatus(result.message);
+    setTimeout(() => setSaveStatus(''), 5000);
+    setProcessingCategory(false);
+  };
+
   const stats = [
     { name: 'Total Visitors', value: visitorCount, icon: Users, color: 'text-blue-600', bg: 'bg-blue-100' },
     { name: 'Total Stories', value: stories.length, icon: BookOpen, color: 'text-green-600', bg: 'bg-green-100' },
@@ -63,51 +110,62 @@ const AdminDashboard = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
           <div className="flex flex-wrap gap-2 bg-white p-1 rounded-lg shadow-sm border">
-            <button
-              onClick={() => setActiveTab('stories')}
-              className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'stories' 
-                  ? 'bg-indigo-600 text-white shadow-sm' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <MessageSquare className="w-4 h-4 mr-2" />
-              Stories
-            </button>
-            <button
-              onClick={() => setActiveTab('analytics')}
-              className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'analytics' 
-                  ? 'bg-indigo-600 text-white shadow-sm' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Analytics
-            </button>
-            <button
-              onClick={() => setActiveTab('sync')}
-              className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'sync' 
-                  ? 'bg-indigo-600 text-white shadow-sm' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Sync Data
-            </button>
-            <button
-              onClick={() => setActiveTab('contact')}
-              className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'contact' 
-                  ? 'bg-indigo-600 text-white shadow-sm' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              Contact Settings
-            </button>
-          </div>
+                <button
+                  onClick={() => setActiveTab('stories')}
+                  className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === 'stories' 
+                      ? 'bg-indigo-600 text-white shadow-sm' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Stories
+                </button>
+                <button
+                  onClick={() => setActiveTab('categories')}
+                  className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === 'categories' 
+                      ? 'bg-indigo-600 text-white shadow-sm' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Tags className="w-4 h-4 mr-2" />
+                  Categories
+                </button>
+                <button
+                  onClick={() => setActiveTab('analytics')}
+                  className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === 'analytics' 
+                      ? 'bg-indigo-600 text-white shadow-sm' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  Analytics
+                </button>
+                <button
+                  onClick={() => setActiveTab('sync')}
+                  className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === 'sync' 
+                      ? 'bg-indigo-600 text-white shadow-sm' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Sync Data
+                </button>
+                <button
+                  onClick={() => setActiveTab('contact')}
+                  className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === 'contact' 
+                      ? 'bg-indigo-600 text-white shadow-sm' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Contact Settings
+                </button>
+              </div>
         </div>
 
         {activeTab === 'stories' && (
@@ -125,7 +183,7 @@ const AdminDashboard = () => {
             <div className="bg-white shadow overflow-hidden sm:rounded-md border border-gray-200">
               <ul className="divide-y divide-gray-200">
                 {stories.map((story) => (
-          <li key={story.firebaseId}>
+                  <li key={story.firebaseId}>
                     <div className="px-4 py-4 flex items-center sm:px-6 hover:bg-gray-50 transition-colors">
                       <div className="min-w-0 flex-1 sm:flex sm:items-center sm:justify-between">
                         <div className="flex items-center">
@@ -175,6 +233,102 @@ const AdminDashboard = () => {
                     <p className="text-sm">Start by adding one!</p>
                   </li>
                 )}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'categories' && (
+          <div>
+            <div className="bg-white shadow rounded-lg border border-gray-200 p-6 mb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Add New Category</h3>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Enter category name"
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                />
+                <button
+                  onClick={handleAddCategory}
+                  disabled={!newCategory.trim() || processingCategory}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add
+                </button>
+              </div>
+              {saveStatus && (
+                <p className={`mt-2 text-sm ${saveStatus.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
+                  {saveStatus}
+                </p>
+              )}
+            </div>
+
+            <div className="bg-white shadow rounded-lg border border-gray-200 overflow-hidden">
+              <div className="px-4 py-5 sm:px-6 bg-gray-50 border-b">
+                <h3 className="text-lg leading-6 font-medium text-gray-900">Manage Categories</h3>
+              </div>
+              <ul className="divide-y divide-gray-200">
+                {categories.map((category) => (
+                  <li key={category} className="px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      {editingCategory === category ? (
+                        <div className="flex items-center gap-2 flex-1">
+                          <input
+                            type="text"
+                            value={editedCategoryName}
+                            onChange={(e) => setEditedCategoryName(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleEditCategory(category)}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                          />
+                          <button
+                            onClick={() => handleEditCategory(category)}
+                            disabled={processingCategory}
+                            className="inline-flex items-center p-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                          >
+                            <Save className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingCategory(null);
+                              setEditedCategoryName('');
+                            }}
+                            disabled={processingCategory}
+                            className="inline-flex items-center p-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <Tags className="h-5 w-5 text-indigo-600" />
+                            <p className="font-medium text-gray-900">{category}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleEditCategory(category)}
+                              disabled={processingCategory}
+                              className="inline-flex items-center p-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                            >
+                              <Edit className="h-4 w-4 text-gray-500" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCategory(category)}
+                              disabled={processingCategory}
+                              className="inline-flex items-center p-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
