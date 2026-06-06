@@ -91,7 +91,7 @@ const AdminEditor = () => {
     setFormData(prev => ({ ...prev, image: '' }));
   };
 
-  const categories = ["Mystery", "Romance", "Thriller", "History"];
+  const categories = ["Mystery", "Romance", "Thriller", "History", "Cine Updates"];
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">

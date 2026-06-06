@@ -4,7 +4,7 @@ import { BookOpen, Settings, LogOut, ChevronDown, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
-  const categories = ["Mystery", "Romance", "Thriller", "History"];
+  const categories = ["Mystery", "Romance", "Thriller", "History", "Cine Updates"];
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
