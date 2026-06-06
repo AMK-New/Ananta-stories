@@ -6,12 +6,19 @@ const Category = () => {
   const { category } = useParams();
   const { stories } = useStories();
   
-  // Filter stories by category (case insensitive)
+  // Normalize both URL category and story category for comparison
+  const normalizeCategory = (cat) => cat.toLowerCase().replace(/-/g, ' ');
+  
+  // Filter stories by category (case insensitive and handles hyphens vs spaces)
   const categoryStories = stories.filter(
-    story => story.category.toLowerCase() === category.toLowerCase()
+    story => normalizeCategory(story.category) === normalizeCategory(category)
   );
 
-  const formattedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+  // Format category name (replace hyphens with spaces and capitalize each word)
+  const formattedCategory = category
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -19,7 +26,7 @@ const Category = () => {
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">{formattedCategory} Stories</h1>
           <p className="text-xl text-gray-600">
-            Explore our collection of AI-generated {category} tales.
+            Explore our collection of AI-generated {formattedCategory.toLowerCase()} tales.
           </p>
         </div>
         
