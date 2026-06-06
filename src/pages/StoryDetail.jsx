@@ -12,20 +12,20 @@ const StoryDetail = () => {
   const [copying, setCopying] = useState(false);
   
   const story = getStory(id);
-  const storyId = story?.id;
+  const firebaseId = story?.firebaseId;
   
   // Check if user has liked this story
   const likedStories = JSON.parse(localStorage.getItem('likedStories') || '[]');
-  const hasLiked = storyId ? likedStories.includes(storyId) : false;
+  const hasLiked = firebaseId ? likedStories.includes(firebaseId) : false;
   const likeCount = story?.likes || 0;
   const viewCount = story?.views || 0;
 
   // Increment view count when component mounts (only for non-admin users)
   useEffect(() => {
-    if (storyId && !user?.isAdmin) {
-      incrementViewCount(storyId);
+    if (firebaseId && !user?.isAdmin) {
+      incrementViewCount(firebaseId);
     }
-  }, [storyId, incrementViewCount, user]);
+  }, [firebaseId, incrementViewCount, user]);
 
   if (!story) {
     return (
@@ -58,8 +58,8 @@ const StoryDetail = () => {
   };
 
   const handleLike = async () => {
-    if (storyId) {
-      await toggleLike(storyId);
+    if (firebaseId) {
+      await toggleLike(firebaseId);
     }
   };
 

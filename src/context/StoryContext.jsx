@@ -195,29 +195,29 @@ export const StoryProvider = ({ children }) => {
     return stories.find(s => s.id === parseInt(id));
   }, [stories]);
 
-  const toggleLike = useCallback(async (storyId) => {
+  const toggleLike = useCallback(async (firebaseId) => {
     try {
-      const storyToLike = stories.find(s => s.id === storyId);
-      if (storyToLike && storyToLike.firebaseId) {
-        const storyRef = doc(db, "stories", storyToLike.firebaseId);
+      const storyToLike = stories.find(s => s.firebaseId === firebaseId);
+      if (storyToLike) {
+        const storyRef = doc(db, "stories", firebaseId);
         
         // Check if user has already liked this story
         const likedStories = JSON.parse(localStorage.getItem('likedStories') || '[]');
-        const hasLiked = likedStories.includes(storyId);
+        const hasLiked = likedStories.includes(firebaseId);
         
         if (hasLiked) {
           // Unlike: decrement count and remove from likedStories
           await updateDoc(storyRef, {
             likes: Math.max((storyToLike.likes || 0) - 1, 0)
           });
-          const newLikedStories = likedStories.filter(id => id !== storyId);
+          const newLikedStories = likedStories.filter(id => id !== firebaseId);
           localStorage.setItem('likedStories', JSON.stringify(newLikedStories));
         } else {
           // Like: increment count and add to likedStories
           await updateDoc(storyRef, {
             likes: (storyToLike.likes || 0) + 1
           });
-          localStorage.setItem('likedStories', JSON.stringify([...likedStories, storyId]));
+          localStorage.setItem('likedStories', JSON.stringify([...likedStories, firebaseId]));
         }
         
         return { success: true };
@@ -229,24 +229,24 @@ export const StoryProvider = ({ children }) => {
     }
   }, [stories]);
 
-  const incrementViewCount = useCallback(async (storyId) => {
+  const incrementViewCount = useCallback(async (firebaseId) => {
     try {
       // Check if user has already viewed this story
       const viewedStories = JSON.parse(localStorage.getItem('viewedStories') || '[]');
-      if (viewedStories.includes(storyId)) {
+      if (viewedStories.includes(firebaseId)) {
         return { success: true }; // Already counted, no change
       }
 
-      const storyToView = stories.find(s => s.id === storyId);
-      if (storyToView && storyToView.firebaseId) {
-        const storyRef = doc(db, "stories", storyToView.firebaseId);
+      const storyToView = stories.find(s => s.firebaseId === firebaseId);
+      if (storyToView) {
+        const storyRef = doc(db, "stories", firebaseId);
         
         await updateDoc(storyRef, {
           views: (storyToView.views || 0) + 1
         });
         
         // Add to viewed stories
-        localStorage.setItem('viewedStories', JSON.stringify([...viewedStories, storyId]));
+        localStorage.setItem('viewedStories', JSON.stringify([...viewedStories, firebaseId]));
         
         return { success: true };
       }
