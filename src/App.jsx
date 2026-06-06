@@ -36,7 +36,14 @@ const AppContent = () => {
           <Route path="/category/:category" element={<Category />} />
           <Route path="/story/:id" element={<StoryDetail />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/reels" element={<Reels />} />
+          <Route 
+            path="/reels" 
+            element={
+              <ProtectedRoute>
+                <Reels />
+              </ProtectedRoute>
+            } 
+          />
           <Route path="/contact" element={<Contact />} />
           
           {/* Protected Admin Routes */}

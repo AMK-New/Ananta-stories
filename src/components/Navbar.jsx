@@ -59,9 +59,11 @@ const Navbar = () => {
             <Link to="/" className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
               Home
             </Link>
-            <Link to="/reels" className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
-              Reels
-            </Link>
+            {user?.role === 'admin' && (
+              <Link to="/reels" className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                Reels
+              </Link>
+            )}
             
             {/* Categories Dropdown */}
             <div className="relative" ref={dropdownRef}>
@@ -136,13 +138,15 @@ const Navbar = () => {
           >
             Home
           </Link>
-          <Link
-            to="/reels"
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
-          >
-            Reels
-          </Link>
+          {user?.role === 'admin' && (
+            <Link
+              to="/reels"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
+            >
+              Reels
+            </Link>
+          )}
           
           {/* Cine Updates link */}
           <Link
