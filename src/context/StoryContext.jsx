@@ -1,4 +1,4 @@
-import { createContext, useState, useContext, useEffect } from 'react';
+import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { stories as initialStories } from '../data/stories';
 import { db } from '../firebase';
 import { 
@@ -44,9 +44,18 @@ export const StoryProvider = ({ children }) => {
     const q = query(collection(db, "stories"), orderBy("id", "desc"));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const storiesArray = [];
+      const seenIds = new Set();
+      
       querySnapshot.forEach((doc) => {
-        storiesArray.push({ ...doc.data(), firebaseId: doc.id });
+        const story = { ...doc.data(), firebaseId: doc.id };
+        // Ensure no duplicates by checking firebaseId
+        if (!seenIds.has(story.firebaseId)) {
+          storiesArray.push(story);
+          seenIds.add(story.firebaseId);
+        }
       });
+      
+      console.log(`Fetched ${storiesArray.length} unique stories from Firestore`);
       
       // If no stories in Firebase, use initialStories and seed them
       if (storiesArray.length === 0 && loading) {
@@ -54,6 +63,9 @@ export const StoryProvider = ({ children }) => {
       } else {
         setStories(storiesArray);
       }
+      setLoading(false);
+    }, (error) => {
+      console.error("Firestore onSnapshot error:", error);
       setLoading(false);
     });
 
@@ -88,60 +100,78 @@ export const StoryProvider = ({ children }) => {
 
   const seedInitialData = async () => {
     console.log("Seeding initial stories to Firebase...");
-    for (const story of initialStories) {
-      await addDoc(collection(db, "stories"), story);
+    try {
+      for (const story of initialStories) {
+        await addDoc(collection(db, "stories"), story);
+      }
+    } catch (error) {
+      console.error("Error seeding data:", error);
     }
   };
 
-  const addStory = async (newStory) => {
+  const addStory = useCallback(async (newStory) => {
     try {
       await addDoc(collection(db, "stories"), {
         ...newStory,
         id: Date.now(), // Still keep numeric ID for sorting
         createdAt: new Date().toISOString()
       });
+      return { success: true };
     } catch (error) {
       console.error("Error adding story: ", error);
+      return { success: false, error: error.message };
     }
-  };
+  }, []);
 
-  const updateStory = async (id, updatedData) => {
+  const updateStory = useCallback(async (id, updatedData) => {
     try {
       // Find the document with the matching numeric ID
       const storyToUpdate = stories.find(s => s.id === id);
       if (storyToUpdate && storyToUpdate.firebaseId) {
         const storyRef = doc(db, "stories", storyToUpdate.firebaseId);
-        await updateDoc(storyRef, updatedData);
+        
+        // Remove firebaseId from the data being sent to Firestore
+        const { firebaseId, ...dataToSave } = updatedData;
+        
+        await updateDoc(storyRef, dataToSave);
+        return { success: true };
       }
+      return { success: false, error: "Story not found" };
     } catch (error) {
       console.error("Error updating story: ", error);
+      return { success: false, error: error.message };
     }
-  };
+  }, [stories]);
 
-  const deleteStory = async (id) => {
+  const deleteStory = useCallback(async (id) => {
     try {
       const storyToDelete = stories.find(s => s.id === id);
       if (storyToDelete && storyToDelete.firebaseId) {
         await deleteDoc(doc(db, "stories", storyToDelete.firebaseId));
+        return { success: true };
       }
+      return { success: false, error: "Story not found" };
     } catch (error) {
       console.error("Error deleting story: ", error);
+      return { success: false, error: error.message };
     }
-  };
+  }, [stories]);
 
-  const getStory = (id) => {
+  const getStory = useCallback((id) => {
     return stories.find(s => s.id === parseInt(id));
-  };
+  }, [stories]);
 
-  const updateContactInfo = async (newInfo) => {
+  const updateContactInfo = useCallback(async (newInfo) => {
     try {
       await setDoc(doc(db, "settings", "contact"), newInfo);
+      return { success: true };
     } catch (error) {
       console.error("Error updating contact info: ", error);
+      return { success: false, error: error.message };
     }
-  };
+  }, []);
 
-  const incrementVisitors = async () => {
+  const incrementVisitors = useCallback(async () => {
     try {
       const statsRef = doc(db, "settings", "stats");
       await updateDoc(statsRef, {
@@ -151,16 +181,16 @@ export const StoryProvider = ({ children }) => {
       // If update fails (doc might not exist), try setDoc
       await setDoc(doc(db, "settings", "stats"), { visitorCount: 1 }, { merge: true });
     }
-  };
+  }, []);
 
-  const importData = async (jsonData) => {
+  const importData = useCallback(async (jsonData) => {
     try {
       const data = JSON.parse(jsonData);
       if (Array.isArray(data)) {
         // Warning: This will add all imported stories to Firebase
         for (const story of data) {
-          delete story.firebaseId; // Clean up old IDs if any
-          await addDoc(collection(db, "stories"), story);
+          const { firebaseId, ...storyToImport } = story;
+          await addDoc(collection(db, "stories"), storyToImport);
         }
         return { success: true, message: 'Stories imported to Firebase successfully!' };
       }
@@ -168,7 +198,7 @@ export const StoryProvider = ({ children }) => {
     } catch (error) {
       return { success: false, message: 'Import failed.' };
     }
-  };
+  }, []);
 
   return (
     <StoryContext.Provider value={{ 

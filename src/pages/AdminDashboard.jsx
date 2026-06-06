@@ -113,7 +113,7 @@ const AdminDashboard = () => {
             <div className="bg-white shadow overflow-hidden sm:rounded-md border border-gray-200">
               <ul className="divide-y divide-gray-200">
                 {stories.map((story) => (
-                  <li key={story.id}>
+          <li key={story.firebaseId}>
                     <div className="px-4 py-4 flex items-center sm:px-6 hover:bg-gray-50 transition-colors">
                       <div className="min-w-0 flex-1 sm:flex sm:items-center sm:justify-between">
                         <div className="flex items-center">

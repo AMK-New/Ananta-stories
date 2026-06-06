@@ -33,12 +33,20 @@ const AdminEditor = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setProcessing(true);
+    let result;
     if (id) {
-      await updateStory(parseInt(id), formData);
+      result = await updateStory(parseInt(id), formData);
     } else {
-      await addStory(formData);
+      result = await addStory(formData);
     }
-    navigate('/admin');
+    
+    setProcessing(false);
+    if (result && result.success) {
+      navigate('/admin');
+    } else {
+      alert(`Error: ${result?.error || 'Failed to save story. The image might be too large (limit is 1MB for the whole story document in Firestore).'}`);
+    }
   };
 
   const handleChange = (e) => {
@@ -55,9 +63,9 @@ const AdminEditor = () => {
       // 1. Show processing state
       setProcessing(true);
 
-      // 2. Validate size (Firestore document limit is 1MB, so we aim for < 800KB)
-      if (file.size > 1 * 1024 * 1024) {
-        alert('Image is too large! Please choose an image smaller than 1MB to keep it free.');
+      // 2. Validate size (Firestore document limit is 1MB, so we aim for < 500KB to account for Base64 overhead)
+      if (file.size > 500 * 1024) {
+        alert('Image is too large! Please choose an image smaller than 500KB to ensure it fits in the database.');
         setProcessing(false);
         return;
       }
