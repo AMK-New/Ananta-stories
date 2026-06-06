@@ -1,12 +1,21 @@
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { useParams, Link, useLocation } from 'react-router-dom';
+import { ArrowLeft, Heart, Share2, Check } from 'lucide-react';
 import { useStories } from '../context/StoryContext';
+import { useState } from 'react';
 
 const StoryDetail = () => {
   const { id } = useParams();
-  const { getStory } = useStories();
+  const location = useLocation();
+  const { getStory, toggleLike } = useStories();
+  const [copying, setCopying] = useState(false);
   
   const story = getStory(id);
+  const storyId = story?.id;
+  
+  // Check if user has liked this story
+  const likedStories = JSON.parse(localStorage.getItem('likedStories') || '[]');
+  const hasLiked = storyId ? likedStories.includes(storyId) : false;
+  const likeCount = story?.likes || 0;
 
   if (!story) {
     return (
@@ -23,6 +32,26 @@ const StoryDetail = () => {
 
   const images = story.images?.length > 0 ? story.images : (story.image ? [story.image] : []);
   const coverImage = images[0];
+
+  // Get the full URL to share
+  const shareUrl = `${window.location.origin}${location.pathname}`;
+
+  const handleCopy = async () => {
+    setCopying(true);
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setTimeout(() => setCopying(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy URL: ", error);
+      setCopying(false);
+    }
+  };
+
+  const handleLike = async () => {
+    if (storyId) {
+      await toggleLike(storyId);
+    }
+  };
 
   return (
     <article className="min-h-screen bg-white">
@@ -52,6 +81,29 @@ const StoryDetail = () => {
         >
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Stories
         </Link>
+        
+        {/* Like and Share Buttons */}
+        <div className="flex items-center gap-4 mb-8">
+          <button
+            onClick={handleLike}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+              hasLiked 
+                ? 'bg-red-100 text-red-600' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <Heart className={`h-5 w-5 ${hasLiked ? 'fill-red-600' : ''}`} />
+            <span className="font-medium">{likeCount}</span>
+          </button>
+          
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
+          >
+            {copying ? <Check className="h-5 w-5 text-green-600" /> : <Share2 className="h-5 w-5" />}
+            <span className="font-medium">{copying ? 'Copied!' : 'Share'}</span>
+          </button>
+        </div>
         
         {/* Show all images if there are multiple */}
         {images.length > 1 && (

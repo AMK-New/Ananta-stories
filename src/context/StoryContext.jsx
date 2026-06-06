@@ -167,6 +167,40 @@ export const StoryProvider = ({ children }) => {
     return stories.find(s => s.id === parseInt(id));
   }, [stories]);
 
+  const toggleLike = useCallback(async (storyId) => {
+    try {
+      const storyToLike = stories.find(s => s.id === storyId);
+      if (storyToLike && storyToLike.firebaseId) {
+        const storyRef = doc(db, "stories", storyToLike.firebaseId);
+        
+        // Check if user has already liked this story
+        const likedStories = JSON.parse(localStorage.getItem('likedStories') || '[]');
+        const hasLiked = likedStories.includes(storyId);
+        
+        if (hasLiked) {
+          // Unlike: decrement count and remove from likedStories
+          await updateDoc(storyRef, {
+            likes: Math.max((storyToLike.likes || 0) - 1, 0)
+          });
+          const newLikedStories = likedStories.filter(id => id !== storyId);
+          localStorage.setItem('likedStories', JSON.stringify(newLikedStories));
+        } else {
+          // Like: increment count and add to likedStories
+          await updateDoc(storyRef, {
+            likes: (storyToLike.likes || 0) + 1
+          });
+          localStorage.setItem('likedStories', JSON.stringify([...likedStories, storyId]));
+        }
+        
+        return { success: true };
+      }
+      return { success: false, error: "Story not found" };
+    } catch (error) {
+      console.error("Error liking story: ", error);
+      return { success: false, error: error.message };
+    }
+  }, [stories]);
+
   const updateContactInfo = useCallback(async (newInfo) => {
     try {
       await setDoc(doc(db, "settings", "contact"), newInfo);
@@ -252,7 +286,8 @@ export const StoryProvider = ({ children }) => {
       incrementVisitors,
       importData,
       loading,
-      cleanupDuplicateStories
+      cleanupDuplicateStories,
+      toggleLike
     }}>
       {children}
     </StoryContext.Provider>
