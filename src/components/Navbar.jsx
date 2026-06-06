@@ -4,7 +4,7 @@ import { BookOpen, Settings, LogOut, ChevronDown, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
-  const categories = ["Mystery", "Romance", "Thriller", "History", "Cine Updates"];
+  const categories = ["Mystery", "Romance", "Thriller", "History"];
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
@@ -91,6 +91,14 @@ const Navbar = () => {
                 </div>
               )}
             </div>
+            
+            {/* Cine Updates as separate link */}
+            <Link
+              to="/category/cine-updates"
+              className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+            >
+              Cine Updates
+            </Link>
 
             <Link to="/contact" className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
               Contact Us
@@ -134,6 +142,15 @@ const Navbar = () => {
             className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
           >
             Reels
+          </Link>
+          
+          {/* Cine Updates link */}
+          <Link
+            to="/category/cine-updates"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
+          >
+            Cine Updates
           </Link>
           
           {/* Mobile Categories Accordion */}
