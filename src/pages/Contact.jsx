@@ -59,13 +59,6 @@ const Contact = () => {
                 </div>
               </div>
             </div>
-
-            <div className="mt-12 p-6 bg-indigo-50 rounded-xl">
-              <h3 className="text-lg font-semibold text-indigo-900 mb-2">Office Hours</h3>
-              <p className="text-indigo-700">Monday - Friday: 9am - 6pm</p>
-              <p className="text-indigo-700">Saturday: 10am - 4pm</p>
-              <p className="text-indigo-700">Sunday: Closed</p>
-            </div>
           </div>
 
           {/* Contact Form */}
