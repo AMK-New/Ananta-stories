@@ -21,12 +21,15 @@ const StoryDetail = () => {
     );
   }
 
+  const images = story.images?.length > 0 ? story.images : (story.image ? [story.image] : []);
+  const coverImage = images[0];
+
   return (
     <article className="min-h-screen bg-white">
       {/* Hero Header */}
       <div className="relative h-96 w-full">
         <img 
-          src={story.image} 
+          src={coverImage} 
           alt={story.title} 
           className="w-full h-full object-cover"
           onError={(e) => { e.currentTarget.src = 'https://placehold.co/1200x800?text=Story+Image'; }}
@@ -49,6 +52,21 @@ const StoryDetail = () => {
         >
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Stories
         </Link>
+        
+        {/* Show all images if there are multiple */}
+        {images.length > 1 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            {images.map((img, index) => (
+              <img
+                key={index}
+                src={img}
+                alt={`${story.title} - Image ${index + 1}`}
+                className="w-full h-64 object-cover rounded-lg shadow-md"
+                onError={(e) => { e.currentTarget.src = 'https://placehold.co/800x600?text=Story+Image'; }}
+              />
+            ))}
+          </div>
+        )}
         
         <div className="prose prose-lg prose-indigo mx-auto text-gray-800 leading-relaxed">
           <p className="text-xl font-medium text-gray-600 mb-8 border-l-4 border-indigo-500 pl-4 italic">

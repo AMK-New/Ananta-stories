@@ -24,17 +24,18 @@ const Hero = ({ stories }) => {
   if (!stories.length) return null;
 
   const currentStory = stories[currentIndex];
+  const coverImage = currentStory.images?.[0] || currentStory.image;
 
   return (
     <div className="relative h-[500px] w-full overflow-hidden bg-gray-900">
       {/* Background Image with Overlay */}
       <div 
         className="absolute inset-0 bg-cover bg-center transition-all duration-700 ease-in-out"
-        style={{ backgroundImage: `url(${currentStory.image})` }}
+        style={{ backgroundImage: `url(${coverImage})` }}
       >
         {/* Fallback for background image if it fails to load */}
         <img 
-          src={currentStory.image} 
+          src={coverImage} 
           alt="" 
           className="hidden" 
           onError={(e) => {

@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom'
 
 const ReelCard = ({ story }) => {
+  const coverImage = story.images?.[0] || story.image;
+  
   return (
     <section className="relative min-h-screen w-full snap-start overflow-hidden">
       <img
-        src={story.image}
+        src={coverImage}
         alt={story.title}
         className="absolute inset-0 h-full w-full object-cover"
         onError={(e) => { e.currentTarget.src = 'https://placehold.co/1200x800?text=Story+Image'; }}

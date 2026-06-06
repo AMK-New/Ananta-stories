@@ -1,10 +1,13 @@
 import { Link } from 'react-router-dom';
 
 const StoryCard = ({ story }) => {
+  // Use first image if images array exists, else use single image
+  const coverImage = story.images?.[0] || story.image;
+  
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden transition-transform duration-300 hover:scale-105">
       <img 
-        src={story.image} 
+        src={coverImage} 
         alt={story.title} 
         className="w-full h-48 object-cover"
         onError={(e) => { e.currentTarget.src = 'https://placehold.co/800x600?text=Story+Image'; }}

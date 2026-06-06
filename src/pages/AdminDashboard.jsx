@@ -132,7 +132,7 @@ const AdminDashboard = () => {
                           <div className="flex-shrink-0 h-12 w-12">
                             <img
                               className="h-12 w-12 rounded-full object-cover border border-gray-200"
-                              src={story.image}
+                              src={story.images?.[0] || story.image}
                               alt=""
                             />
                           </div>

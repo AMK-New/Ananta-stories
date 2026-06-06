@@ -9,22 +9,32 @@ const AdminEditor = () => {
   const { addStory, updateStory, getStory } = useStories();
   const [imageType, setImageType] = useState('url'); // 'url' or 'upload'
   const [processing, setProcessing] = useState(false);
+  const [newImageUrl, setNewImageUrl] = useState('');
   
   const [formData, setFormData] = useState({
     title: '',
     category: 'Mystery',
     description: '',
     content: '',
-    image: ''
+    images: [] // Array of images instead of single image
   });
 
   useEffect(() => {
     if (id) {
       const story = getStory(id);
       if (story) {
-        setFormData(story);
-        // If image is a base64 string, consider it an upload
-        if (story.image && story.image.startsWith('data:')) {
+        // Handle backward compatibility: if story has single 'image', convert to array
+        const initialImages = story.images 
+          ? story.images 
+          : story.image 
+            ? [story.image] 
+            : [];
+        setFormData({
+          ...story,
+          images: initialImages
+        });
+        // Check if first image is a base64 string
+        if (initialImages.length > 0 && initialImages[0].startsWith('data:')) {
           setImageType('upload');
         }
       }
@@ -45,7 +55,7 @@ const AdminEditor = () => {
     if (result && result.success) {
       navigate('/admin');
     } else {
-      alert(`Error: ${result?.error || 'Failed to save story. The image might be too large (limit is 1MB for the whole story document in Firestore).'}`);
+      alert(`Error: ${result?.error || 'Failed to save story. The images might be too large (limit is 1MB for the whole story document in Firestore).'}`);
     }
   };
 
@@ -63,9 +73,9 @@ const AdminEditor = () => {
       // 1. Show processing state
       setProcessing(true);
 
-      // 2. Validate size (Firestore document limit is 1MB, so we aim for < 500KB to account for Base64 overhead)
-      if (file.size > 500 * 1024) {
-        alert('Image is too large! Please choose an image smaller than 500KB to ensure it fits in the database.');
+      // 2. Validate size (Firestore document limit is 1MB, so we aim for < 300KB per image)
+      if (file.size > 300 * 1024) {
+        alert('Image is too large! Please choose an image smaller than 300KB to ensure it fits in the database.');
         setProcessing(false);
         return;
       }
@@ -75,7 +85,7 @@ const AdminEditor = () => {
       reader.onloadend = () => {
         setFormData(prev => ({
           ...prev,
-          image: reader.result
+          images: [...prev.images, reader.result]
         }));
         setProcessing(false);
       };
@@ -87,8 +97,21 @@ const AdminEditor = () => {
     }
   };
 
-  const removeImage = () => {
-    setFormData(prev => ({ ...prev, image: '' }));
+  const handleAddImageUrl = () => {
+    if (newImageUrl.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, newImageUrl.trim()]
+      }));
+      setNewImageUrl('');
+    }
+  };
+
+  const removeImage = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
   };
 
   const categories = ["Mystery", "Romance", "Thriller", "History", "Cine Updates"];
@@ -157,58 +180,103 @@ const AdminEditor = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Story Cover Image</label>
-            {imageType === 'url' ? (
-              <input
-                type="url"
-                name="image"
-                required
-                value={formData.image && !formData.image.startsWith('data:') ? formData.image : ''}
-                onChange={handleChange}
-                placeholder="https://images.unsplash.com/..."
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2.5 border"
-              />
-            ) : (
-              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-indigo-400 transition-colors bg-gray-50">
-                <div className="space-y-1 text-center">
-                  {processing ? (
-                    <div className="flex flex-col items-center">
-                      <Loader2 className="h-12 w-12 text-indigo-600 animate-spin" />
-                      <p className="mt-2 text-sm text-gray-600">Processing image...</p>
-                    </div>
-                  ) : (
-                    <>
-                      <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
-                      <div className="flex text-sm text-gray-600">
-                        <label className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 px-2 py-0.5">
-                          <span>Upload a file</span>
-                          <input type="file" className="sr-only" accept="image/*" onChange={handleFileUpload} />
-                        </label>
-                        <p className="pl-1">or drag and drop</p>
-                      </div>
-                      <p className="text-xs text-gray-500">PNG, JPG, GIF up to 1MB</p>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
+            <label className="block text-sm font-medium text-gray-700 mb-1">Story Images</label>
             
-            {formData.image && (
-              <div className="mt-4 relative inline-block">
-                <img
-                  src={formData.image}
-                  alt="Preview"
-                  className="h-32 w-48 object-cover rounded-lg border border-gray-200 shadow-sm"
-                />
-                <button
-                  type="button"
-                  onClick={removeImage}
-                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors"
-                >
-                  <X className="w-3 h-3" />
-                </button>
+            <div className="space-y-4">
+              {/* Add Image Section */}
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setImageType('url')}
+                    className={`flex-1 flex items-center justify-center py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                      imageType === 'url' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <LinkIcon className="w-4 h-4 mr-2" />
+                    Add Image URL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImageType('upload')}
+                    className={`flex-1 flex items-center justify-center py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                      imageType === 'upload' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Image
+                  </button>
+                </div>
+                
+                {imageType === 'url' && (
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      value={newImageUrl}
+                      onChange={(e) => setNewImageUrl(e.target.value)}
+                      placeholder="https://images.unsplash.com/..."
+                      className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2.5 border"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddImageUrl()}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddImageUrl}
+                      disabled={!newImageUrl.trim()}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                )}
+                
+                {imageType === 'upload' && (
+                  <div className="flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-indigo-400 transition-colors bg-gray-50">
+                    <div className="space-y-1 text-center">
+                      {processing ? (
+                        <div className="flex flex-col items-center">
+                          <Loader2 className="h-12 w-12 text-indigo-600 animate-spin" />
+                          <p className="mt-2 text-sm text-gray-600">Processing image...</p>
+                        </div>
+                      ) : (
+                        <>
+                          <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+                          <div className="flex text-sm text-gray-600">
+                            <label className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 px-2 py-0.5">
+                              <span>Upload a file</span>
+                              <input type="file" className="sr-only" accept="image/*" onChange={handleFileUpload} />
+                            </label>
+                            <p className="pl-1">or drag and drop</p>
+                          </div>
+                          <p className="text-xs text-gray-500">PNG, JPG, GIF up to 300KB per image</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+              
+              {/* Image Previews */}
+              {formData.images.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {formData.images.map((img, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={img}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-lg border border-gray-200 shadow-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div>
