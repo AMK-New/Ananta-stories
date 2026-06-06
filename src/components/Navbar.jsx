@@ -14,7 +14,7 @@ const Navbar = () => {
   const dropdownRef = useRef(null);
   
   // Filter out "Cine Updates" from categories dropdown since it's a separate link
-  const dropdownCategories = categories.filter(cat => cat !== "Cine Updates");
+  const dropdownCategories = categories.filter(cat => cat.name !== "Cine Updates");
 
   const handleLogout = () => {
     logout();
@@ -84,13 +84,13 @@ const Navbar = () => {
                   <div className="py-1" role="menu">
                     {dropdownCategories.map((category) => (
                       <Link
-                        key={category}
-                        to={`/category/${category.toLowerCase().replace(/\s+/g, '-')}`}
+                        key={category.name}
+                        to={`/category/${category.name.toLowerCase().replace(/\s+/g, '-')}`}
                         onClick={() => setIsCategoriesOpen(false)}
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
                         role="menuitem"
                       >
-                        {category}
+                        {category.name}
                       </Link>
                     ))}
                   </div>
@@ -174,15 +174,15 @@ const Navbar = () => {
               <div className="pl-4 space-y-1 bg-gray-50 rounded-md mt-1">
                 {dropdownCategories.map((category) => (
                   <Link
-                    key={category}
-                    to={`/category/${category.toLowerCase().replace(/\s+/g, '-')}`}
+                    key={category.name}
+                    to={`/category/${category.name.toLowerCase().replace(/\s+/g, '-')}`}
                     onClick={() => {
                       setIsMobileMenuOpen(false);
                       setIsMobileCategoriesOpen(false);
                     }}
                     className="block px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-indigo-600 hover:bg-indigo-50"
                   >
-                    {category}
+                    {category.name}
                   </Link>
                 ))}
               </div>

@@ -25,7 +25,13 @@ const initialContactInfo = {
   description: 'Have a story to share or a question to ask? We would love to hear from you! Reach out to us through any of the channels below.'
 };
 
-const initialCategories = ["Mystery", "Romance", "Thriller", "History", "Cine Updates"];
+const initialCategories = [
+  { name: "Mystery", customHeading: "", customDescription: "" },
+  { name: "Romance", customHeading: "", customDescription: "" },
+  { name: "Thriller", customHeading: "", customDescription: "" },
+  { name: "History", customHeading: "", customDescription: "" },
+  { name: "Cine Updates", customHeading: "", customDescription: "" }
+];
 
 export const useStories = () => {
   const context = useContext(StoryContext);
@@ -85,7 +91,12 @@ export const StoryProvider = ({ children }) => {
   useEffect(() => {
     const unsubCategories = onSnapshot(doc(db, "settings", "categories"), (doc) => {
       if (doc.exists()) {
-        setCategories(doc.data().list || []);
+        const data = doc.data().list || [];
+        // Migrate string categories to objects
+        const migratedData = data.map(cat => 
+          typeof cat === "string" ? { name: cat, customHeading: "", customDescription: "" } : cat
+        );
+        setCategories(migratedData);
       } else {
         // Seed initial categories if it doesn't exist
         setDoc(doc.ref, { list: initialCategories });
@@ -321,10 +332,10 @@ export const StoryProvider = ({ children }) => {
   // Category management functions
   const addCategory = useCallback(async (categoryName) => {
     try {
-      if (categories.some(cat => cat.toLowerCase() === categoryName.toLowerCase())) {
+      if (categories.some(cat => cat.name.toLowerCase() === categoryName.toLowerCase())) {
         return { success: false, message: "Category already exists!" };
       }
-      const newCategories = [...categories, categoryName];
+      const newCategories = [...categories, { name: categoryName, customHeading: "", customDescription: "" }];
       await setDoc(doc(db, "settings", "categories"), { list: newCategories });
       return { success: true, message: "Category added successfully!" };
     } catch (error) {
@@ -338,12 +349,14 @@ export const StoryProvider = ({ children }) => {
       if (oldName === newName) {
         return { success: false, message: "Old and new category names are the same" };
       }
-      if (categories.some(cat => cat.toLowerCase() === newName.toLowerCase())) {
+      if (categories.some(cat => cat.name.toLowerCase() === newName.toLowerCase())) {
         return { success: false, message: "Category with this name already exists!" };
       }
 
       // Update categories list
-      const newCategories = categories.map(cat => cat === oldName ? newName : cat);
+      const newCategories = categories.map(cat => 
+        cat.name === oldName ? { ...cat, name: newName } : cat
+      );
       await setDoc(doc(db, "settings", "categories"), { list: newCategories });
 
       // Update all stories with the old category name
@@ -360,12 +373,25 @@ export const StoryProvider = ({ children }) => {
     }
   }, [categories, stories]);
 
+  const updateCategoryMetadata = useCallback(async (categoryName, metadata) => {
+    try {
+      const newCategories = categories.map(cat => 
+        cat.name === categoryName ? { ...cat, ...metadata } : cat
+      );
+      await setDoc(doc(db, "settings", "categories"), { list: newCategories });
+      return { success: true, message: "Category metadata updated successfully!" };
+    } catch (error) {
+      console.error("Error updating category metadata:", error);
+      return { success: false, message: "Failed to update category metadata" };
+    }
+  }, [categories]);
+
   const deleteCategory = useCallback(async (categoryName) => {
     try {
       if (categories.length <= 1) {
         return { success: false, message: "You must have at least one category!" };
       }
-      const newCategories = categories.filter(cat => cat !== categoryName);
+      const newCategories = categories.filter(cat => cat.name !== categoryName);
       await setDoc(doc(db, "settings", "categories"), { list: newCategories });
       return { success: true, message: "Category deleted successfully!" };
     } catch (error) {
@@ -393,7 +419,8 @@ export const StoryProvider = ({ children }) => {
       incrementViewCount,
       addCategory,
       editCategory,
-      deleteCategory
+      deleteCategory,
+      updateCategoryMetadata
     }}>
       {children}
     </StoryContext.Provider>

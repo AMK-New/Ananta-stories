@@ -13,7 +13,7 @@ const AdminEditor = () => {
   
   const [formData, setFormData] = useState({
     title: '',
-    category: categories.length > 0 ? categories[0] : 'Mystery',
+    category: categories.length > 0 ? categories[0].name : 'Mystery',
     description: '',
     content: '',
     images: [] // Array of images instead of single image
@@ -40,7 +40,7 @@ const AdminEditor = () => {
       }
     } else if (categories.length > 0 && formData.category === 'Mystery') {
       // Set default category to first available category when not editing
-      setFormData(prev => ({ ...prev, category: categories[0] }));
+      setFormData(prev => ({ ...prev, category: categories[0].name }));
     }
   }, [id, getStory, categories]);
 
@@ -148,7 +148,7 @@ const AdminEditor = () => {
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2.5 border bg-white"
               >
                 {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
+                  <option key={cat.name} value={cat.name}>{cat.name}</option>
                 ))}
               </select>
             </div>

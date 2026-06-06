@@ -4,7 +4,7 @@ import { useStories } from '../context/StoryContext';
 import { Plus, Edit, Trash2, Settings, MessageSquare, Save, BarChart3, Users, BookOpen, Download, Upload, Copy, Check, Tags, X } from 'lucide-react';
 
 const AdminDashboard = () => {
-  const { stories, deleteStory, contactInfo, updateContactInfo, visitorCount, importData, cleanupDuplicateStories, categories, addCategory, editCategory, deleteCategory } = useStories();
+  const { stories, deleteStory, contactInfo, updateContactInfo, visitorCount, importData, cleanupDuplicateStories, categories, addCategory, editCategory, deleteCategory, updateCategoryMetadata } = useStories();
   const [activeTab, setActiveTab] = useState('stories');
   const [contactForm, setContactForm] = useState(contactInfo);
   const [saveStatus, setSaveStatus] = useState('');
@@ -16,6 +16,8 @@ const AdminDashboard = () => {
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState(null);
   const [editedCategoryName, setEditedCategoryName] = useState('');
+  const [editedCategoryHeading, setEditedCategoryHeading] = useState('');
+  const [editedCategoryDescription, setEditedCategoryDescription] = useState('');
   const [processingCategory, setProcessingCategory] = useState(false);
 
   const handleDelete = (id) => {
@@ -72,6 +74,8 @@ const AdminDashboard = () => {
       if (!editedCategoryName.trim()) {
         setEditingCategory(null);
         setEditedCategoryName('');
+        setEditedCategoryHeading('');
+        setEditedCategoryDescription('');
         return;
       }
       setProcessingCategory(true);
@@ -79,12 +83,30 @@ const AdminDashboard = () => {
       setSaveStatus(result.message);
       setEditingCategory(null);
       setEditedCategoryName('');
+      setEditedCategoryHeading('');
+      setEditedCategoryDescription('');
       setTimeout(() => setSaveStatus(''), 5000);
       setProcessingCategory(false);
     } else {
+      // Find the category object to get current metadata
+      const categoryObj = categories.find(c => c.name === categoryName);
       setEditingCategory(categoryName);
       setEditedCategoryName(categoryName);
+      setEditedCategoryHeading(categoryObj?.customHeading || '');
+      setEditedCategoryDescription(categoryObj?.customDescription || '');
     }
+  };
+
+  const handleUpdateCategoryMetadata = async () => {
+    if (!editingCategory) return;
+    setProcessingCategory(true);
+    const result = await updateCategoryMetadata(editingCategory, {
+      customHeading: editedCategoryHeading,
+      customDescription: editedCategoryDescription
+    });
+    setSaveStatus(result.message);
+    setTimeout(() => setSaveStatus(''), 5000);
+    setProcessingCategory(false);
   };
 
   const handleDeleteCategory = async (categoryName) => {
@@ -273,58 +295,106 @@ const AdminDashboard = () => {
               </div>
               <ul className="divide-y divide-gray-200">
                 {categories.map((category) => (
-                  <li key={category} className="px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center justify-between">
-                      {editingCategory === category ? (
-                        <div className="flex items-center gap-2 flex-1">
-                          <input
-                            type="text"
-                            value={editedCategoryName}
-                            onChange={(e) => setEditedCategoryName(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleEditCategory(category)}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                          />
-                          <button
-                            onClick={() => handleEditCategory(category)}
-                            disabled={processingCategory}
-                            className="inline-flex items-center p-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                          >
-                            <Save className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setEditingCategory(null);
-                              setEditedCategoryName('');
-                            }}
-                            disabled={processingCategory}
-                            className="inline-flex items-center p-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 transition-colors"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
+                  <li key={category.name} className="px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors">
+                    <div className="flex flex-col gap-4">
+                      {editingCategory === category.name ? (
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={editedCategoryName}
+                              onChange={(e) => setEditedCategoryName(e.target.value)}
+                              placeholder="Category name"
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                            />
+                            <button
+                              onClick={() => handleEditCategory(category.name)}
+                              disabled={processingCategory}
+                              className="inline-flex items-center p-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                              title="Save category name"
+                            >
+                              <Save className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingCategory(null);
+                                setEditedCategoryName('');
+                                setEditedCategoryHeading('');
+                                setEditedCategoryDescription('');
+                              }}
+                              disabled={processingCategory}
+                              className="inline-flex items-center p-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                              title="Cancel"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Custom Heading</label>
+                              <input
+                                type="text"
+                                value={editedCategoryHeading}
+                                onChange={(e) => setEditedCategoryHeading(e.target.value)}
+                                placeholder="Enter custom heading (leave blank to use default)"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Custom Description</label>
+                              <textarea
+                                value={editedCategoryDescription}
+                                onChange={(e) => setEditedCategoryDescription(e.target.value)}
+                                placeholder="Enter custom description (leave blank to use default)"
+                                rows={3}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                              />
+                            </div>
+                            <div className="flex justify-end">
+                              <button
+                                onClick={handleUpdateCategoryMetadata}
+                                disabled={processingCategory}
+                                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 transition-colors"
+                              >
+                                <Save className="h-4 w-4 mr-2" />
+                                Save Metadata
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       ) : (
-                        <>
-                          <div className="flex items-center gap-2">
-                            <Tags className="h-5 w-5 text-indigo-600" />
-                            <p className="font-medium text-gray-900">{category}</p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              <Tags className="h-5 w-5 text-indigo-600" />
+                              <p className="font-medium text-gray-900">{category.name}</p>
+                            </div>
+                            {category.customHeading && (
+                              <p className="text-sm text-gray-500 mt-1">{category.customHeading}</p>
+                            )}
+                            {category.customDescription && (
+                              <p className="text-sm text-gray-500">{category.customDescription}</p>
+                            )}
                           </div>
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => handleEditCategory(category)}
+                              onClick={() => handleEditCategory(category.name)}
                               disabled={processingCategory}
                               className="inline-flex items-center p-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                              title="Edit category"
                             >
                               <Edit className="h-4 w-4 text-gray-500" />
                             </button>
                             <button
-                              onClick={() => handleDeleteCategory(category)}
+                              onClick={() => handleDeleteCategory(category.name)}
                               disabled={processingCategory}
                               className="inline-flex items-center p-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-colors"
+                              title="Delete category"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
-                        </>
+                        </div>
                       )}
                     </div>
                   </li>
