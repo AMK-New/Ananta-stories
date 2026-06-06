@@ -201,6 +201,34 @@ export const StoryProvider = ({ children }) => {
     }
   }, [stories]);
 
+  const incrementViewCount = useCallback(async (storyId) => {
+    try {
+      // Check if user has already viewed this story
+      const viewedStories = JSON.parse(localStorage.getItem('viewedStories') || '[]');
+      if (viewedStories.includes(storyId)) {
+        return { success: true }; // Already counted, no change
+      }
+
+      const storyToView = stories.find(s => s.id === storyId);
+      if (storyToView && storyToView.firebaseId) {
+        const storyRef = doc(db, "stories", storyToView.firebaseId);
+        
+        await updateDoc(storyRef, {
+          views: (storyToView.views || 0) + 1
+        });
+        
+        // Add to viewed stories
+        localStorage.setItem('viewedStories', JSON.stringify([...viewedStories, storyId]));
+        
+        return { success: true };
+      }
+      return { success: false, error: "Story not found" };
+    } catch (error) {
+      console.error("Error incrementing view count: ", error);
+      return { success: false, error: error.message };
+    }
+  }, [stories]);
+
   const updateContactInfo = useCallback(async (newInfo) => {
     try {
       await setDoc(doc(db, "settings", "contact"), newInfo);
@@ -287,7 +315,8 @@ export const StoryProvider = ({ children }) => {
       importData,
       loading,
       cleanupDuplicateStories,
-      toggleLike
+      toggleLike,
+      incrementViewCount
     }}>
       {children}
     </StoryContext.Provider>
