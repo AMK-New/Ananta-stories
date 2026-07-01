@@ -42,8 +42,8 @@ export const useStories = () => {
 };
 
 export const StoryProvider = ({ children }) => {
-  const [stories, setStories] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const [stories, setStories] = useState(initialStories); // Start with local stories
+  const [categories, setCategories] = useState(initialCategories); // Start with local categories
   const [contactInfo, setContactInfo] = useState(initialContactInfo);
   const [visitorCount, setVisitorCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -51,8 +51,10 @@ export const StoryProvider = ({ children }) => {
 
   // Real-time listener for stories
   useEffect(() => {
+    console.log("Starting Firestore stories listener...");
     const q = query(collection(db, "stories"), orderBy("id", "desc"));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      console.log("Received onSnapshot update!");
       const storiesArray = [];
       const seenFirebaseIds = new Set();
       
@@ -70,17 +72,25 @@ export const StoryProvider = ({ children }) => {
         console.log(`  Story ${idx + 1}: id=${story.id}, firebaseId=${story.firebaseId}, title="${story.title}"`);
       });
       
-      // If no stories in Firebase and we haven't seeded yet, seed them
-      if (storiesArray.length === 0 && !hasSeeded) {
-        console.log("No stories found, starting seeding...");
-        seedInitialData();
-        setHasSeeded(true);
-      } else {
+      // If we got stories from Firestore, use them!
+      if (storiesArray.length > 0) {
+        console.log("Setting stories in state...");
         setStories(storiesArray);
+      }
+      // If no stories in Firebase, try to seed
+      else if (!hasSeeded) {
+        console.log("Seeding initial stories now...");
+        seedInitialData().then(() => {
+          console.log("Seeding complete!");
+          setHasSeeded(true);
+        }).catch((err) => {
+          console.warn("Seeding failed—keeping local stories:", err);
+        });
       }
       setLoading(false);
     }, (error) => {
-      console.error("Firestore onSnapshot error:", error);
+      console.warn("⚠️ Firestore onSnapshot error—keeping local stories:", error);
+      // If permission denied, just keep using local initial stories
       setLoading(false);
     });
 
@@ -99,8 +109,12 @@ export const StoryProvider = ({ children }) => {
         setCategories(migratedData);
       } else {
         // Seed initial categories if it doesn't exist
-        setDoc(doc.ref, { list: initialCategories });
+        setDoc(doc.ref, { list: initialCategories }).catch(err => {
+          console.warn("Failed to seed categories:", err);
+        });
       }
+    }, (error) => {
+      console.warn("⚠️ Firestore categories error—keeping local categories:", error);
     });
 
     return () => unsubCategories();
@@ -113,8 +127,12 @@ export const StoryProvider = ({ children }) => {
         setContactInfo(doc.data());
       } else {
         // Seed initial contact info if it doesn't exist
-        setDoc(doc.ref, initialContactInfo);
+        setDoc(doc.ref, initialContactInfo).catch(err => {
+          console.warn("Failed to seed contact info:", err);
+        });
       }
+    }, (error) => {
+      console.warn("⚠️ Firestore contact error—keeping local contact info:", error);
     });
 
     const unsubStats = onSnapshot(doc(db, "settings", "stats"), (doc) => {
@@ -122,8 +140,12 @@ export const StoryProvider = ({ children }) => {
         setVisitorCount(doc.data().visitorCount || 0);
       } else {
         // Seed initial stats if it doesn't exist
-        setDoc(doc.ref, { visitorCount: 0 });
+        setDoc(doc.ref, { visitorCount: 0 }).catch(err => {
+          console.warn("Failed to seed stats:", err);
+        });
       }
+    }, (error) => {
+      console.warn("⚠️ Firestore stats error—keeping default visitor count:", error);
     });
 
     return () => {
