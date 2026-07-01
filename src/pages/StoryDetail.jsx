@@ -14,13 +14,11 @@ const StoryDetail = () => {
   const story = getStory(id);
   const firebaseId = story?.firebaseId;
   
-  // Check if user has liked this story
   const likedStories = JSON.parse(localStorage.getItem('likedStories') || '[]');
   const hasLiked = firebaseId ? likedStories.includes(firebaseId) : false;
   const likeCount = story?.likes || 0;
   const viewCount = story?.views || 0;
 
-  // Increment view count when component mounts (only for non-admin users)
   useEffect(() => {
     if (firebaseId && !user?.isAdmin) {
       incrementViewCount(firebaseId);
@@ -42,8 +40,6 @@ const StoryDetail = () => {
 
   const images = story.images?.length > 0 ? story.images : (story.image ? [story.image] : []);
   const coverImage = images[0];
-
-  // Get the full URL to share
   const shareUrl = `${window.location.origin}${location.pathname}`;
 
   const handleCopy = async () => {
@@ -65,7 +61,6 @@ const StoryDetail = () => {
 
   return (
     <article className="min-h-screen bg-white">
-      {/* Hero Header */}
       <div className="relative h-96 w-full">
         <img 
           src={coverImage} 
@@ -92,7 +87,6 @@ const StoryDetail = () => {
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Stories
         </Link>
         
-        {/* Like, Share and View Count */}
         <div className="flex items-center gap-4 mb-8">
           <button
             onClick={handleLike}
@@ -120,7 +114,6 @@ const StoryDetail = () => {
           </button>
         </div>
         
-        {/* Show all images if there are multiple */}
         {images.length > 1 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
             {images.map((img, index) => (
@@ -136,12 +129,13 @@ const StoryDetail = () => {
         )}
         
         <div className="prose prose-lg prose-indigo mx-auto text-gray-800 leading-relaxed">
-          <p className="text-xl font-medium text-gray-600 mb-8 border-l-4 border-indigo-500 pl-4 italic">
-            {story.description}
-          </p>
-          <div className="whitespace-pre-wrap">
-            {story.content}
-          </div>
+          <div 
+            className="text-xl font-medium text-gray-600 mb-8 border-l-4 border-indigo-500 pl-4 italic"
+            dangerouslySetInnerHTML={{ __html: story.description }}
+          />
+          <div 
+            dangerouslySetInnerHTML={{ __html: story.content }}
+          />
         </div>
       </div>
     </article>
