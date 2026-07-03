@@ -248,50 +248,42 @@ export const StoryProvider = ({ children }) => {
     try {
       const storyToLike = stories.find(s => s.firebaseId === firebaseId);
       if (storyToLike) {
-        // Only update Firestore if it's not a local story
+        // Check if user has already liked this story
+        const likedStories = JSON.parse(localStorage.getItem('likedStories') || '[]');
+        const hasLiked = likedStories.includes(firebaseId);
+        
+        // First update local state immediately for responsive UI
+        setStories(prevStories => 
+          prevStories.map(story => {
+            if (story.firebaseId === firebaseId) {
+              return {
+                ...story,
+                likes: hasLiked 
+                  ? Math.max((story.likes || 0) - 1, 0)
+                  : (story.likes || 0) + 1
+              };
+            }
+            return story;
+          })
+        );
+        
+        // Then update localStorage
+        if (hasLiked) {
+          const newLikedStories = likedStories.filter(id => id !== firebaseId);
+          localStorage.setItem('likedStories', JSON.stringify(newLikedStories));
+        } else {
+          localStorage.setItem('likedStories', JSON.stringify([...likedStories, firebaseId]));
+        }
+        
+        // Then update Firestore if it's not a local story
         if (firebaseId && !firebaseId.startsWith('local-')) {
           try {
             const storyRef = doc(db, "stories", firebaseId);
-            
-            // Check if user has already liked this story
-            const likedStories = JSON.parse(localStorage.getItem('likedStories') || '[]');
-            const hasLiked = likedStories.includes(firebaseId);
-            
-            if (hasLiked) {
-              // Unlike: decrement count and remove from likedStories
-              await updateDoc(storyRef, {
-                likes: Math.max((storyToLike.likes || 0) - 1, 0)
-              });
-              const newLikedStories = likedStories.filter(id => id !== firebaseId);
-              localStorage.setItem('likedStories', JSON.stringify(newLikedStories));
-            } else {
-              // Like: increment count and add to likedStories
-              await updateDoc(storyRef, {
-                likes: (storyToLike.likes || 0) + 1
-              });
-              localStorage.setItem('likedStories', JSON.stringify([...likedStories, firebaseId]));
-            }
+            await updateDoc(storyRef, {
+              likes: increment(hasLiked ? -1 : 1)
+            });
           } catch (firestoreError) {
-            console.warn("Couldn't update Firestore, but still updating local state...", firestoreError);
-            // Still update localStorage even if Firestore fails
-            const likedStories = JSON.parse(localStorage.getItem('likedStories') || '[]');
-            const hasLiked = likedStories.includes(firebaseId);
-            if (hasLiked) {
-              const newLikedStories = likedStories.filter(id => id !== firebaseId);
-              localStorage.setItem('likedStories', JSON.stringify(newLikedStories));
-            } else {
-              localStorage.setItem('likedStories', JSON.stringify([...likedStories, firebaseId]));
-            }
-          }
-        } else {
-          // For local stories, just update localStorage
-          const likedStories = JSON.parse(localStorage.getItem('likedStories') || '[]');
-          const hasLiked = likedStories.includes(firebaseId);
-          if (hasLiked) {
-            const newLikedStories = likedStories.filter(id => id !== firebaseId);
-            localStorage.setItem('likedStories', JSON.stringify(newLikedStories));
-          } else {
-            localStorage.setItem('likedStories', JSON.stringify([...likedStories, firebaseId]));
+            console.warn("Couldn't update Firestore, but local state is already updated", firestoreError);
           }
         }
         
@@ -314,21 +306,33 @@ export const StoryProvider = ({ children }) => {
 
       const storyToView = stories.find(s => s.firebaseId === firebaseId);
       if (storyToView) {
-        // Only update Firestore if it's not a local story
+        // First update local state immediately for responsive UI
+        setStories(prevStories => 
+          prevStories.map(story => {
+            if (story.firebaseId === firebaseId) {
+              return {
+                ...story,
+                views: (story.views || 0) + 1
+              };
+            }
+            return story;
+          })
+        );
+        
+        // Mark as viewed in localStorage
+        localStorage.setItem('viewedStories', JSON.stringify([...viewedStories, firebaseId]));
+        
+        // Update Firestore if it's not a local story
         if (firebaseId && !firebaseId.startsWith('local-')) {
           try {
             const storyRef = doc(db, "stories", firebaseId);
-            
             await updateDoc(storyRef, {
-              views: (storyToView.views || 0) + 1
+              views: increment(1)
             });
           } catch (firestoreError) {
-            console.warn("Couldn't update view count in Firestore, but still marking as viewed...", firestoreError);
+            console.warn("Couldn't update view count in Firestore, but local state is already updated", firestoreError);
           }
         }
-        
-        // Always add to viewed stories in localStorage
-        localStorage.setItem('viewedStories', JSON.stringify([...viewedStories, firebaseId]));
         
         return { success: true };
       }
