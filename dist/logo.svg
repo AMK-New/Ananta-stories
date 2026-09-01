@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#ffffff"/>
+  <!-- Icon -->
+  <g transform="translate(256, 180) scale(2.5)">
+    <path d="M-32 -80h48a32 32 0 0 1 32 32v112a24 24 0 0 0-24-24h-56z" fill="#4f46e5"/>
+    <path d="M32 -80h-48a32 32 0 0 0-32 32v112a24 24 0 0 1 24-24h56z" fill="#4f46e5"/>
+  </g>
+  <!-- Text -->
+  <text x="256" y="350" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#1f2937" text-anchor="middle">Ananta Stories</text>
+</svg>

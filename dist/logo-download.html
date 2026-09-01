@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Download Ananta Stories Logo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      text-align: center;
+      padding: 20px;
+    }
+    .logo-preview {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+    button {
+      background-color: #4f46e5;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background-color: #4338ca;
+    }
+  </style>
+</head>
+<body>
+  <h1>Download Ananta Stories Logo</h1>
+  <div class="logo-preview">
+    <img src="logo.svg" alt="Ananta Stories Logo" style="width: 256px; height: 256px;">
+  </div>
+  
+  <button id="download-jpeg">Download as JPEG</button>
+  <button id="download-png">Download as PNG</button>
+  
+  <script>
+    async function downloadImage(type) {
+      const svgElement = new Image();
+      const svgUrl = 'logo.svg';
+      
+      const svg = await fetch(svgUrl).then(r => r.text());
+      const blob = new Blob([svg], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = 1024;
+      canvas.height = 1024;
+      
+      const img = new Image();
+      img.onload = () => {
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        canvas.toBlob((blob) => {
+          const downloadUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = downloadUrl;
+          a.download = `ananta-stories-logo.${type}`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(downloadUrl);
+          URL.revokeObjectURL(url);
+        }, type === 'jpeg' ? 'image/jpeg' : 'image/png');
+      };
+      img.src = url;
+    }
+    
+    document.getElementById('download-jpeg').addEventListener('click', () => downloadImage('jpeg'));
+    document.getElementById('download-png').addEventListener('click', () => downloadImage('png'));
+  </script>
+</body>
+</html>
