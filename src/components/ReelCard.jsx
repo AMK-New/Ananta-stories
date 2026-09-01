@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 
 const ReelCard = ({ story }) => {
   const coverImage = story.images?.[0] || story.image;
+  const stripHtml = (html) => html?.replace(/<[^>]*>?/gm, '') || '';
   
   return (
     <section className="relative min-h-screen w-full snap-start overflow-hidden">
@@ -19,7 +20,7 @@ const ReelCard = ({ story }) => {
           </span>
           <h2 className="mb-3 text-3xl font-bold sm:text-4xl">{story.title}</h2>
           <p className="mb-6 line-clamp-3 text-gray-200 sm:text-lg">
-            {story.description}
+            {stripHtml(story.description)}
           </p>
           <div className="flex gap-3">
             <Link

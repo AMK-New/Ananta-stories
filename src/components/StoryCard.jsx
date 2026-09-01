@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Heart, Eye } from 'lucide-react';
 
 const StoryCard = ({ story }) => {
+  const stripHtml = (html) => html?.replace(/<[^>]*>?/gm, '') || '';
   // Use first image if images array exists, else use single image
   const coverImage = story.images?.[0] || story.image;
   const likeCount = story?.likes || 0;
@@ -32,7 +33,9 @@ const StoryCard = ({ story }) => {
           </div>
         </div>
         <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-1">{story.title}</h3>
-        <p className="text-gray-600 mb-3 line-clamp-2 text-sm" dangerouslySetInnerHTML={{ __html: story.description }}></p>
+        <p className="text-gray-600 mb-3 line-clamp-2 text-sm">
+          {stripHtml(story.description)}
+        </p>
         <Link 
           to={`/story/${story.id}`}
           className="inline-block bg-indigo-600 text-white px-3 py-1.5 rounded-md text-xs font-medium hover:bg-indigo-700 transition-colors"

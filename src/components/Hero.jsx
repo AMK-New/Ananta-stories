@@ -5,6 +5,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 const Hero = ({ stories }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  const stripHtml = (html) => html?.replace(/<[^>]*>?/gm, '') || '';
+
   // Auto-scroll
   useEffect(() => {
     const timer = setInterval(() => {
@@ -58,7 +60,7 @@ const Hero = ({ stories }) => {
             {currentStory.title}
           </h1>
           <p className="text-lg md:text-xl text-gray-200 mb-8 line-clamp-2">
-            {currentStory.description}
+            {stripHtml(currentStory.description)}
           </p>
           <Link 
             to={`/story/${currentStory.id}`}

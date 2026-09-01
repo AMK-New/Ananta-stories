@@ -5,6 +5,9 @@ import { Plus, Edit, Trash2, Settings, MessageSquare, Save, BarChart3, Users, Bo
 
 const AdminDashboard = () => {
   const { stories, deleteStory, contactInfo, updateContactInfo, visitorCount, importData, cleanupDuplicateStories, categories, addCategory, editCategory, deleteCategory, updateCategoryMetadata } = useStories();
+  
+  const stripHtml = (html) => html?.replace(/<[^>]*>?/gm, '') || '';
+
   const [activeTab, setActiveTab] = useState('stories');
   const [contactForm, setContactForm] = useState(contactInfo);
   const [saveStatus, setSaveStatus] = useState('');
@@ -225,7 +228,7 @@ const AdminDashboard = () => {
                             </div>
                             <div className="mt-1 flex">
                               <p className="text-sm text-gray-500 truncate max-w-md">
-                                {story.description}
+                                {stripHtml(story.description)}
                               </p>
                             </div>
                           </div>

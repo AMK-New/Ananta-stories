@@ -75,7 +75,7 @@ const AppContent = () => {
       </div>
       <footer className="bg-gray-800 text-white py-8">
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <p>&copy; 2024 Ananta Stories. All rights reserved.</p>
+          <p>&copy; 2026 Ananta Stories. All rights reserved.</p>
           <div className="mt-4 flex justify-center space-x-6">
             <Link to="/contact" className="text-gray-400 hover:text-white text-sm transition-colors">
               Contact Us
