@@ -7,6 +7,50 @@ import 'react-quill/dist/quill.snow.css';
 
 const _fileInputs = new WeakMap();
 
+/**
+ * Compresses an image file before it gets converted to Base64 for Firestore.
+ * This ensures that even with 5-6 images, the document stays under the 1MB limit.
+ */
+const compressImage = (file, maxWidth = 1000, quality = 0.6) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate new dimensions while maintaining aspect ratio
+        if (width > height) {
+          if (width > maxWidth) {
+            height *= maxWidth / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxWidth) {
+            width *= maxWidth / height;
+            height = maxWidth;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Convert to JPEG with compression (0.6 quality is usually safe and clear)
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressedDataUrl);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+};
+
 const AdminEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -54,17 +98,12 @@ const AdminEditor = () => {
                   continue;
                 }
                 try {
-                  const dataUrl = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result);
-                    reader.onerror = () => reject(reader.error);
-                    reader.readAsDataURL(file);
-                  });
+                  const compressedDataUrl = await compressImage(file);
                   const range = quill.getSelection(true);
-                  quill.insertEmbed(range.index, 'image', dataUrl, 'user');
+                  quill.insertEmbed(range.index, 'image', compressedDataUrl, 'user');
                   quill.setSelection(range.index + 1);
                 } catch (err) {
-                  alert(`Failed to read "${file.name}".`);
+                  alert(`Failed to process "${file.name}".`);
                 }
               }
               input.value = '';
@@ -132,11 +171,14 @@ const AdminEditor = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const contentSize = new Blob([formData.content || '']).size;
-    const imagesSize = (formData.images || []).reduce((acc, img) => acc + (img?.length || 0) * 0.75, 0);
+    const imagesSize = (formData.images || []).reduce((acc, img) => acc + (img?.length || 0), 0);
     const totalEncodedSize = contentSize + imagesSize;
+    
+    // Firestore has a 1MB limit per document. 
+    // We warn at 900KB to account for field names and metadata.
     if (totalEncodedSize > 900 * 1024) {
       const proceed = window.confirm(
-        `This story is heavy (~${Math.round(totalEncodedSize / 1024)} KB). To stay on Firebase's free tier, we recommend removing or resizing some images. Continue anyway?`
+        `This story is very large (~${Math.round(totalEncodedSize / 1024)} KB). Even with compression, it is close to the 1MB Firestore limit. If you have too many high-resolution images, the save might fail. Continue anyway?`
       );
       if (!proceed) return;
     }
@@ -174,19 +216,18 @@ const AdminEditor = () => {
         return;
       }
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({
-          ...prev,
-          images: [...prev.images, reader.result]
-        }));
-        setProcessing(false);
-      };
-      reader.onerror = () => {
-        alert('Failed to read file.');
-        setProcessing(false);
-      };
-      reader.readAsDataURL(file);
+      compressImage(file)
+        .then(compressedDataUrl => {
+          setFormData(prev => ({
+            ...prev,
+            images: [...prev.images, compressedDataUrl]
+          }));
+          setProcessing(false);
+        })
+        .catch(err => {
+          alert('Failed to process image.');
+          setProcessing(false);
+        });
     }
   };
 
