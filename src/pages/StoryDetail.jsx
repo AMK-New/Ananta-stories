@@ -1,8 +1,9 @@
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, Heart, Share2, Check, Eye } from 'lucide-react';
 import { useStories } from '../context/StoryContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { ImageGalleryCarousel, ImageLightbox } from '../components/ImageGalleryCarousel';
 
 const StoryDetail = () => {
   const { id } = useParams();
@@ -10,20 +11,73 @@ const StoryDetail = () => {
   const { getStory, toggleLike, incrementViewCount } = useStories();
   const { user } = useAuth();
   const [copying, setCopying] = useState(false);
-  
+
   const story = getStory(id);
   const firebaseId = story?.firebaseId;
-  
+  const images = story?.images?.length > 0 ? story.images : (story?.image ? [story.image] : []);
+  const coverImage = images[0];
+  const shareUrl = `${window.location.origin}${location.pathname}`;
+
   const likedStories = JSON.parse(localStorage.getItem('likedStories') || '[]');
   const hasLiked = firebaseId ? likedStories.includes(firebaseId) : false;
   const likeCount = story?.likes || 0;
   const viewCount = story?.views || 0;
+
+  // Lightbox state
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [lightboxImages, setLightboxImages] = useState([]);
+
+  const contentRef = useRef(null);
+  const [galleryImages, setGalleryImages] = useState([]);
+
+  const coverImagesSet = useMemo(() => 
+    images.map((img, i) => ({ src: img, alt: `${story.title} - Image ${i + 1}` })),
+    [images, story.title]
+  );
 
   useEffect(() => {
     if (firebaseId && !user?.isAdmin) {
       incrementViewCount(firebaseId);
     }
   }, [firebaseId, incrementViewCount, user]);
+
+  // Post-process the Full Content HTML:
+  // 1. Ensure all links open in new tab with rel=noopener
+  // 2. Collect all images into a gallery and replace them with the carousel component.
+  useEffect(() => {
+    const node = contentRef.current;
+    if (!story?.content) {
+      setGalleryImages([]);
+      return;
+    }
+
+    // Apply target=_blank + rel to all anchors already in DOM (from dangerouslySetInnerHTML)
+    if (node) {
+      node.querySelectorAll('a[href]').forEach((a) => {
+        if (!a.getAttribute('target')) a.setAttribute('target', '_blank');
+        if (!a.getAttribute('rel')) a.setAttribute('rel', 'noopener noreferrer');
+      });
+    }
+
+    // Use DOMParser to extract images from the HTML string directly.
+    // This is more reliable than querying the live DOM which might be hidden or not yet ready.
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(story.content, 'text/html');
+    const imgs = Array.from(doc.querySelectorAll('img'));
+
+    if (imgs.length === 0) {
+      setGalleryImages([]);
+      return;
+    }
+
+    const collected = imgs.map((img) => ({
+      src: img.getAttribute('src') || img.src,
+      alt: img.getAttribute('alt') || img.alt || '',
+    }));
+    
+    setGalleryImages(collected);
+  }, [story?.content, story?.id]);
 
   if (!story) {
     return (
@@ -37,10 +91,6 @@ const StoryDetail = () => {
       </div>
     );
   }
-
-  const images = story.images?.length > 0 ? story.images : (story.image ? [story.image] : []);
-  const coverImage = images[0];
-  const shareUrl = `${window.location.origin}${location.pathname}`;
 
   const handleCopy = async () => {
     setCopying(true);
@@ -57,6 +107,12 @@ const StoryDetail = () => {
     if (firebaseId) {
       await toggleLike(firebaseId);
     }
+  };
+
+  const openLightbox = (i, imageSet) => {
+    setLightboxImages(imageSet);
+    setLightboxIndex(i);
+    setLightboxOpen(true);
   };
 
   return (
@@ -115,17 +171,10 @@ const StoryDetail = () => {
         </div>
         
         {images.length > 1 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            {images.map((img, index) => (
-              <img
-                key={index}
-                src={img}
-                alt={`${story.title} - Image ${index + 1}`}
-                className="w-full h-64 object-cover rounded-lg shadow-md"
-                onError={(e) => { e.currentTarget.src = 'https://placehold.co/800x600?text=Story+Image'; }}
-              />
-            ))}
-          </div>
+          <ImageGalleryCarousel
+            images={coverImagesSet}
+            onOpenImage={(i) => openLightbox(i, coverImagesSet)}
+          />
         )}
         
         <div className="prose prose-lg prose-indigo mx-auto text-gray-800 leading-relaxed">
@@ -133,11 +182,29 @@ const StoryDetail = () => {
             className="text-xl font-medium text-gray-600 mb-8 border-l-4 border-indigo-500 pl-4 italic"
             dangerouslySetInnerHTML={{ __html: story.description }}
           />
+
+          {/* In-content gallery: Now follows the 1-3 grid vs 4+ carousel logic */}
+          {galleryImages.length > 0 && (
+            <ImageGalleryCarousel
+              images={galleryImages}
+              onOpenImage={(i) => openLightbox(i, galleryImages)}
+            />
+          )}
+
           <div 
+            ref={contentRef}
+            className="content-images-hidden"
             dangerouslySetInnerHTML={{ __html: story.content }}
           />
         </div>
       </div>
+
+      <ImageLightbox
+        images={lightboxImages}
+        startIndex={lightboxIndex}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </article>
   );
 };

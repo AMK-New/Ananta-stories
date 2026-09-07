@@ -111,10 +111,6 @@ const Navbar = () => {
                 {cineLinkText}
               </Link>
             )}
-
-            <Link to="/contact" className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
-              Contact Us
-            </Link>
             
             {user && (
               <div className="flex items-center space-x-4 ml-4 pl-4 border-l border-gray-200">
@@ -196,14 +192,6 @@ const Navbar = () => {
               </div>
             )}
           </div>
-
-          <Link
-            to="/contact"
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
-          >
-            Contact Us
-          </Link>
 
           {user && (
             <div className="pt-4 mt-4 border-t border-gray-200">

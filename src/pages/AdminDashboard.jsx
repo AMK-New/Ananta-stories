@@ -1,19 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useStories } from '../context/StoryContext';
-import { Plus, Edit, Trash2, Settings, MessageSquare, Save, BarChart3, Users, BookOpen, Download, Upload, Copy, Check, Tags, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Settings, MessageSquare, Save, BarChart3, Users, BookOpen, Download, Upload, Copy, Check, Tags, X, Info, Image as ImageIcon } from 'lucide-react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+
+const quillModules = {
+  toolbar: [
+    [{ 'header': [1, 2, 3, false] }],
+    ['bold', 'italic', 'underline'],
+    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+    ['link'],
+    ['clean']
+  ]
+};
+const quillFormats = ['header', 'bold', 'italic', 'underline', 'list', 'bullet', 'link'];
 
 const AdminDashboard = () => {
-  const { stories, deleteStory, contactInfo, updateContactInfo, visitorCount, importData, cleanupDuplicateStories, categories, addCategory, editCategory, deleteCategory, updateCategoryMetadata } = useStories();
+  const { stories, deleteStory, contactInfo, updateContactInfo, aboutInfo, updateAboutInfo, visitorCount, importData, cleanupDuplicateStories, categories, addCategory, editCategory, deleteCategory, updateCategoryMetadata } = useStories();
   
   const stripHtml = (html) => html?.replace(/<[^>]*>?/gm, '') || '';
 
   const [activeTab, setActiveTab] = useState('stories');
   const [contactForm, setContactForm] = useState(contactInfo);
+  const [aboutForm, setAboutForm] = useState(aboutInfo);
   const [saveStatus, setSaveStatus] = useState('');
   const [importJson, setImportJson] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
   const [cleaningUp, setCleaningUp] = useState(false);
+  const [aboutProcessing, setAboutProcessing] = useState(false);
+  const aboutImgInputRef = useRef(null);
   
   // Category management state
   const [newCategory, setNewCategory] = useState('');
@@ -34,6 +50,47 @@ const AdminDashboard = () => {
     updateContactInfo(contactForm);
     setSaveStatus('Settings saved successfully!');
     setTimeout(() => setSaveStatus(''), 3000);
+  };
+
+  useEffect(() => {
+    setContactForm(contactInfo);
+  }, [contactInfo]);
+
+  useEffect(() => {
+    setAboutForm(aboutInfo);
+  }, [aboutInfo]);
+
+  const handleAboutImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) {
+      alert('Image is too large! Please choose an image smaller than 3MB.');
+      return;
+    }
+    setAboutProcessing(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAboutForm((prev) => ({ ...prev, image: reader.result }));
+      setAboutProcessing(false);
+    };
+    reader.onerror = () => {
+      alert('Failed to read image.');
+      setAboutProcessing(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAboutSubmit = async (e) => {
+    e.preventDefault();
+    setAboutProcessing(true);
+    const result = await updateAboutInfo(aboutForm);
+    setAboutProcessing(false);
+    if (result.success) {
+      setSaveStatus('About Us saved successfully!');
+    } else {
+      setSaveStatus(`Error: ${result.error || 'Failed to save.'}`);
+    }
+    setTimeout(() => setSaveStatus(''), 4000);
   };
 
   const handleImport = () => {
@@ -189,6 +246,17 @@ const AdminDashboard = () => {
                 >
                   <Settings className="w-4 h-4 mr-2" />
                   Contact Settings
+                </button>
+                <button
+                  onClick={() => setActiveTab('about')}
+                  className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === 'about' 
+                      ? 'bg-indigo-600 text-white shadow-sm' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Info className="w-4 h-4 mr-2" />
+                  About Settings
                 </button>
               </div>
         </div>
@@ -618,6 +686,125 @@ const AdminDashboard = () => {
                   >
                     <Save className="-ml-1 mr-2 h-4 w-4" />
                     Save Changes
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'about' && (
+          <div className="bg-white shadow rounded-lg border border-gray-200 overflow-hidden">
+            <div className="px-4 py-5 sm:px-6 bg-gray-50 border-b flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                  Edit About Us Page
+                </h3>
+                <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                  These details will be displayed on the public About Us page (accessible from the footer).
+                </p>
+              </div>
+              <Link
+                to="/about"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-md transition-colors"
+              >
+                Preview Page ↗
+              </Link>
+            </div>
+            <div className="px-4 py-6 sm:px-6">
+              <form onSubmit={handleAboutSubmit} className="space-y-6">
+                <div>
+                  <label htmlFor="aboutTitle" className="block text-sm font-medium text-gray-700">
+                    Page Title
+                  </label>
+                  <input
+                    id="aboutTitle"
+                    type="text"
+                    value={aboutForm.title || ''}
+                    onChange={(e) => setAboutForm((prev) => ({ ...prev, title: e.target.value }))}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Hero Image <span className="text-gray-400 font-normal">(optional, up to 3MB)</span>
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
+                    <div className="sm:col-span-1">
+                      {aboutForm.image ? (
+                        <div className="relative group rounded-xl overflow-hidden ring-1 ring-gray-200 bg-gray-50">
+                          <img
+                            src={aboutForm.image}
+                            alt="About preview"
+                            className="w-full h-44 object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setAboutForm((prev) => ({ ...prev, image: '' }))}
+                            className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 opacity-90"
+                            title="Remove image"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="w-full h-44 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 text-xs p-3 text-center">
+                          <ImageIcon className="w-8 h-8 text-gray-300 mb-2" />
+                          No image selected
+                        </div>
+                      )}
+                    </div>
+                    <div className="sm:col-span-2 flex flex-col gap-2">
+                      <input
+                        ref={aboutImgInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAboutImageUpload}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => aboutImgInputRef.current?.click()}
+                        disabled={aboutProcessing}
+                        className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 w-full sm:w-auto transition-colors"
+                      >
+                        {aboutProcessing ? 'Processing…' : 'Upload Image'}
+                      </button>
+                      <p className="text-xs text-gray-500">
+                        PNG, JPG, GIF up to 3MB. Used as the hero banner on the About Us page.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    About Us Body
+                  </label>
+                  <div className="border rounded-md">
+                    <ReactQuill
+                      theme="snow"
+                      value={aboutForm.body || ''}
+                      onChange={(value) => setAboutForm((prev) => ({ ...prev, body: value }))}
+                      modules={quillModules}
+                      formats={quillFormats}
+                      placeholder="Tell visitors about Ananta Stories…"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <span className="text-sm font-medium text-green-600">{saveStatus}</span>
+                  <button
+                    type="submit"
+                    disabled={aboutProcessing}
+                    className="inline-flex items-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors"
+                  >
+                    <Save className="-ml-1 mr-2 h-4 w-4" />
+                    Save About Us
                   </button>
                 </div>
               </form>

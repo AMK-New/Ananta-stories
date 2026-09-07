@@ -11,6 +11,7 @@ import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import Reels from './pages/Reels';
 import Contact from './pages/Contact';
+import About from './pages/About';
 import { useStories } from './context/StoryContext';
 import { useEffect } from 'react';
 
@@ -45,6 +46,7 @@ const AppContent = () => {
             } 
           />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/about" element={<About />} />
           
           {/* Protected Admin Routes */}
           <Route 
@@ -76,7 +78,10 @@ const AppContent = () => {
       <footer className="bg-gray-800 text-white py-8">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <p>&copy; 2026 Ananta Stories. All rights reserved.</p>
-          <div className="mt-4 flex justify-center space-x-6">
+          <div className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2">
+            <Link to="/about" className="text-gray-400 hover:text-white text-sm transition-colors">
+              About Us
+            </Link>
             <Link to="/contact" className="text-gray-400 hover:text-white text-sm transition-colors">
               Contact Us
             </Link>

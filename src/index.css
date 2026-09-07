@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body, #root {
+  font-family: theme('fontFamily.sans');
+}
+
 /* Hide scrollbars for carousels */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
@@ -10,4 +14,83 @@
 .scrollbar-hide {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
+}
+
+/* Ensure that content embedded via Quill preserves the system-wide font stack,
+   so Telugu/Hindi/Tamil/Kannada/Malayalam/Bengali/Gujarati all render crisply. */
+.ql-editor,
+.ql-editor p,
+.ql-editor h1,
+.ql-editor h2,
+.ql-editor h3,
+.ql-editor li,
+.prose,
+.prose p,
+.prose h1,
+.prose h2,
+.prose h3,
+.prose li {
+  font-family: theme('fontFamily.sans') !important;
+}
+
+/* Fix for ReactQuill v2 in Vite/Tailwind */
+.quill {
+  @apply bg-white flex flex-col;
+  min-height: 150px;
+}
+
+.ql-toolbar.ql-snow {
+  @apply border-gray-300 rounded-t-md !important;
+  border-bottom: none !important;
+}
+
+.ql-container.ql-snow {
+  @apply border-gray-300 rounded-b-md !important;
+  min-height: 150px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.ql-editor {
+  @apply min-h-[150px] flex-1 text-base;
+}
+
+.ql-editor.ql-blank::before {
+  @apply text-gray-400 not-italic;
+}
+
+/* Fix for toolbar icons being hidden by Tailwind reset */
+.ql-snow .ql-picker {
+  @apply leading-none;
+}
+
+.ql-snow .ql-stroke {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ql-snow .ql-fill {
+  fill-rule: evenodd;
+}
+
+/* Ensure lightbox image doesn't get blurry at high zoom */
+img {
+  -webkit-user-drag: none;
+}
+
+/* Default links inside rendered story content to open safely */
+.prose a,
+.prose-lg a {
+  word-break: break-word;
+}
+
+/* Hide images in the main content because they are moved to the gallery carousel */
+.content-images-hidden img {
+  display: none !important;
+}
+
+/* Also hide empty paragraphs that might be left behind after images are hidden */
+.content-images-hidden p:empty {
+  display: none;
 }

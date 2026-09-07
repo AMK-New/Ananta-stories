@@ -25,6 +25,12 @@ const initialContactInfo = {
   description: 'Have a story to share or a question to ask? We would love to hear from you! Reach out to us through any of the channels below.'
 };
 
+const initialAboutInfo = {
+  title: 'About Ananta Stories',
+  body: '<p>Welcome to <strong>Ananta Stories</strong> — a growing library of short stories across Mystery, Romance, Thriller, History, and more.</p><p>We believe stories are timeless. Read, discover, and lose yourself in words written to be re-read.</p>',
+  image: ''
+};
+
 const initialCategories = [
   { name: "Mystery", customHeading: "", customDescription: "" },
   { name: "Romance", customHeading: "", customDescription: "" },
@@ -45,6 +51,7 @@ export const StoryProvider = ({ children }) => {
   const [stories, setStories] = useState(initialStories); // Start with local stories
   const [categories, setCategories] = useState(initialCategories); // Start with local categories
   const [contactInfo, setContactInfo] = useState(initialContactInfo);
+  const [aboutInfo, setAboutInfo] = useState(initialAboutInfo);
   const [visitorCount, setVisitorCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [hasSeeded, setHasSeeded] = useState(false);
@@ -120,7 +127,7 @@ export const StoryProvider = ({ children }) => {
     return () => unsubCategories();
   }, []);
 
-  // Real-time listener for contact info and visitors
+  // Real-time listener for contact info, about info, and visitors
   useEffect(() => {
     const unsubContact = onSnapshot(doc(db, "settings", "contact"), (doc) => {
       if (doc.exists()) {
@@ -133,6 +140,18 @@ export const StoryProvider = ({ children }) => {
       }
     }, (error) => {
       console.warn("⚠️ Firestore contact error—keeping local contact info:", error);
+    });
+
+    const unsubAbout = onSnapshot(doc(db, "settings", "about"), (doc) => {
+      if (doc.exists()) {
+        setAboutInfo(doc.data());
+      } else {
+        setDoc(doc.ref, initialAboutInfo).catch(err => {
+          console.warn("Failed to seed about info:", err);
+        });
+      }
+    }, (error) => {
+      console.warn("⚠️ Firestore about error—keeping local about info:", error);
     });
 
     const unsubStats = onSnapshot(doc(db, "settings", "stats"), (doc) => {
@@ -150,6 +169,7 @@ export const StoryProvider = ({ children }) => {
 
     return () => {
       unsubContact();
+      unsubAbout();
       unsubStats();
     };
   }, []);
@@ -353,6 +373,16 @@ export const StoryProvider = ({ children }) => {
     }
   }, []);
 
+  const updateAboutInfo = useCallback(async (newInfo) => {
+    try {
+      await setDoc(doc(db, "settings", "about"), newInfo);
+      return { success: true };
+    } catch (error) {
+      console.error("Error updating about info: ", error);
+      return { success: false, error: error.message };
+    }
+  }, []);
+
   const incrementVisitors = useCallback(async () => {
     try {
       const statsRef = doc(db, "settings", "stats");
@@ -496,6 +526,8 @@ export const StoryProvider = ({ children }) => {
       getStory,
       contactInfo,
       updateContactInfo,
+      aboutInfo,
+      updateAboutInfo,
       visitorCount,
       incrementVisitors,
       importData,

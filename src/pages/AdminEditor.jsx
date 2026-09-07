@@ -1,29 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useStories } from '../context/StoryContext';
 import { Upload, Link as LinkIcon, Image as ImageIcon, X, Loader2 } from 'lucide-react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
-// Quill modules with all the tools we need!
-const modules = {
-  toolbar: [
-    [{ 'header': [1, 2, 3, false] }],
-    [{ 'font': [] }],
-    ['bold', 'italic', 'underline', 'strike'],
-    [{ 'color': [] }, { 'background': [] }],
-    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-    [{ 'indent': '-1'}, { 'indent': '+1' }],
-    [{ 'align': [] }],
-    ['link', 'image', 'video'],
-    ['clean']
-  ]
-};
-
-const formats = [
-  'header', 'font', 'bold', 'italic', 'underline', 'strike', 'color', 'background',
-  'list', 'bullet', 'indent', 'align', 'link', 'image', 'video'
-];
+const _fileInputs = new WeakMap();
 
 const AdminEditor = () => {
   const { id } = useParams();
@@ -41,6 +23,90 @@ const AdminEditor = () => {
     images: []
   });
 
+  const quillModules = useMemo(() => ({
+    toolbar: {
+      container: [
+        [{ 'header': [1, 2, 3, false] }],
+        [{ 'font': [] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'color': [] }, { 'background': [] }],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'indent': '-1'}, { 'indent': '+1' }],
+        [{ 'align': [] }],
+        ['link', 'image', 'video'],
+        ['clean']
+      ],
+      handlers: {
+        image: function () {
+          const quill = this.quill;
+          let input = _fileInputs.get(quill);
+          if (!input) {
+            input = document.createElement('input');
+            input.setAttribute('type', 'file');
+            input.setAttribute('accept', 'image/*');
+            input.setAttribute('multiple', 'multiple');
+            input.onchange = async () => {
+              const files = Array.from(input.files || []);
+              if (files.length === 0) return;
+              for (const file of files) {
+                if (file.size > 5 * 1024 * 1024) {
+                  alert(`"${file.name}" is larger than 5MB and was skipped.`);
+                  continue;
+                }
+                try {
+                  const dataUrl = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = () => reject(reader.error);
+                    reader.readAsDataURL(file);
+                  });
+                  const range = quill.getSelection(true);
+                  quill.insertEmbed(range.index, 'image', dataUrl, 'user');
+                  quill.setSelection(range.index + 1);
+                } catch (err) {
+                  alert(`Failed to read "${file.name}".`);
+                }
+              }
+              input.value = '';
+            };
+            _fileInputs.set(quill, input);
+          }
+          input.click();
+        },
+        link: function (value) {
+          const quill = this.quill;
+          if (value) {
+            quill.format('link', false);
+            return;
+          }
+          const range = quill.getSelection();
+          const url = window.prompt('Enter the URL for the link (e.g. https://example.com):');
+          if (!url) return;
+          let trimmedUrl = url.trim();
+          if (!/^https?:\/\//i.test(trimmedUrl)) {
+            trimmedUrl = 'https://' + trimmedUrl;
+          }
+          if (range && range.length > 0) {
+            quill.format('link', trimmedUrl, 'user');
+          } else {
+            const shortName = window.prompt('Enter a short name to display (e.g. Open Document):', trimmedUrl);
+            if (!shortName) return;
+            const idx = (range && range.index != null) ? range.index : quill.getLength();
+            quill.insertText(idx, shortName, 'user');
+            quill.setSelection(idx, shortName.length, 'silent');
+            quill.format('link', trimmedUrl, 'user');
+            quill.setSelection(idx + shortName.length, 0, 'silent');
+          }
+        }
+      }
+    }
+  }), []);
+
+  const formats = useMemo(() => [
+    'header', 'font', 'bold', 'italic', 'underline', 'strike', 'color', 'background',
+    'list', 'bullet', 'indent', 'align', 'link', 'image', 'video'
+  ], []);
+  
   useEffect(() => {
     if (id) {
       const story = getStory(id);
@@ -65,6 +131,15 @@ const AdminEditor = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const contentSize = new Blob([formData.content || '']).size;
+    const imagesSize = (formData.images || []).reduce((acc, img) => acc + (img?.length || 0) * 0.75, 0);
+    const totalEncodedSize = contentSize + imagesSize;
+    if (totalEncodedSize > 900 * 1024) {
+      const proceed = window.confirm(
+        `This story is heavy (~${Math.round(totalEncodedSize / 1024)} KB). To stay on Firebase's free tier, we recommend removing or resizing some images. Continue anyway?`
+      );
+      if (!proceed) return;
+    }
     setProcessing(true);
     let result;
     if (id) {
@@ -93,8 +168,8 @@ const AdminEditor = () => {
     const file = e.target.files[0];
     if (file) {
       setProcessing(true);
-      if (file.size > 300 * 1024) {
-        alert('Image is too large!');
+      if (file.size > 3 * 1024 * 1024) {
+        alert('Image is too large! Please choose an image smaller than 3MB.');
         setProcessing(false);
         return;
       }
@@ -235,7 +310,7 @@ const AdminEditor = () => {
                           </label>
                           <p className="pl-1">or drag and drop</p>
                         </div>
-                        <p className="text-xs text-gray-500">PNG, JPG, GIF up to 300KB per image</p>
+                        <p className="text-xs text-gray-500">PNG, JPG, GIF up to 3MB per image</p>
                       </>
                     )}
                   </div>
@@ -267,12 +342,12 @@ const AdminEditor = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Description (Short Summary)</label>
-            <div className="border rounded-md">
-              <ReactQuill 
+            <div className="border rounded-md overflow-hidden bg-white min-h-[150px]">
+              <ReactQuill
                 theme="snow"
-                value={formData.description}
+                value={formData.description || ''}
                 onChange={(value) => setFormData(prev => ({ ...prev, description: value }))}
-                modules={modules}
+                modules={quillModules}
                 formats={formats}
                 placeholder="Give a brief summary of the story..."
               />
@@ -281,12 +356,12 @@ const AdminEditor = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Full Content</label>
-            <div className="border rounded-md">
-              <ReactQuill 
+            <div className="border rounded-md overflow-hidden bg-white min-h-[250px]">
+              <ReactQuill
                 theme="snow"
-                value={formData.content}
+                value={formData.content || ''}
                 onChange={(value) => setFormData(prev => ({ ...prev, content: value }))}
-                modules={modules}
+                modules={quillModules}
                 formats={formats}
                 placeholder="Write the full story here..."
               />
