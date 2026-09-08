@@ -8,12 +8,21 @@ import { ImageGalleryCarousel, ImageLightbox } from '../components/ImageGalleryC
 const StoryDetail = () => {
   const { id } = useParams();
   const location = useLocation();
-  const { getStory, toggleLike, incrementViewCount } = useStories();
+  const { getStory, toggleLike, incrementViewCount, stories, loading } = useStories();
   const { user } = useAuth();
   const [copying, setCopying] = useState(false);
 
-  const story = getStory(id);
+  const story = useMemo(() => getStory(id), [getStory, id, stories]);
   const firebaseId = story?.firebaseId;
+
+  // Filter related stories (same category, excluding current)
+  const relatedStories = useMemo(() => {
+    if (!story) return [];
+    return stories
+      .filter(s => s.category === story.category && s.id !== story.id)
+      .slice(0, 5);
+  }, [stories, story]);
+
   const images = story?.images?.length > 0 ? story.images : (story?.image ? [story.image] : []);
   const coverImage = images[0];
   const shareUrl = `${window.location.origin}${location.pathname}`;
@@ -31,10 +40,10 @@ const StoryDetail = () => {
   const contentRef = useRef(null);
   const [galleryImages, setGalleryImages] = useState([]);
 
-  const coverImagesSet = useMemo(() => 
-    images.map((img, i) => ({ src: img, alt: `${story.title} - Image ${i + 1}` })),
-    [images, story.title]
-  );
+  const coverImagesSet = useMemo(() => {
+    if (!story) return [];
+    return images.map((img, i) => ({ src: img, alt: `${story.title} - Image ${i + 1}` }));
+  }, [images, story?.title]);
 
   useEffect(() => {
     if (firebaseId && !user?.isAdmin) {
@@ -79,13 +88,25 @@ const StoryDetail = () => {
     setGalleryImages(collected);
   }, [story?.content, story?.id]);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+          <p className="text-gray-500 font-medium">Loading story...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!story) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Story not found</h2>
-          <Link to="/" className="text-indigo-600 hover:text-indigo-500">
-            Go back home
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center px-4">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Story not found</h2>
+          <p className="text-gray-600 mb-8 text-lg">The story you're looking for might have been moved or deleted.</p>
+          <Link to="/" className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all">
+            <ArrowLeft className="mr-2 h-5 w-5" /> Back to Home
           </Link>
         </div>
       </div>
@@ -135,67 +156,106 @@ const StoryDetail = () => {
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <Link 
           to="/" 
           className="inline-flex items-center text-gray-600 hover:text-indigo-600 mb-8 transition-colors"
         >
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Stories
         </Link>
-        
-        <div className="flex items-center gap-4 mb-8">
-          <button
-            onClick={handleLike}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
-              hasLiked 
-                ? 'bg-red-100 text-red-600' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            <Heart className={`h-5 w-5 ${hasLiked ? 'fill-red-600' : ''}`} />
-            <span className="font-medium">{likeCount}</span>
-          </button>
-          
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-700">
-            <Eye className="h-5 w-5" />
-            <span className="font-medium">{viewCount}</span>
+
+        <div className="flex flex-col lg:flex-row gap-12">
+          {/* Sidebar - Related Stories */}
+          <aside className="w-full lg:w-1/4 order-2 lg:order-1">
+            <div className="sticky top-24">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                <span className="w-1.5 h-6 bg-indigo-600 mr-3 rounded-full"></span>
+                Related Stories
+              </h3>
+              {relatedStories.length > 0 ? (
+                <div className="space-y-6">
+                  {relatedStories.map((s) => (
+                    <Link 
+                      key={s.id} 
+                      to={`/story/${s.id}`}
+                      className="group block"
+                    >
+                      <div className="aspect-video w-full rounded-lg overflow-hidden mb-3 bg-gray-100">
+                        <img 
+                          src={s.images?.[0] || s.image} 
+                          alt={s.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                      <h4 className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-2">
+                        {s.title}
+                      </h4>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 italic">No other stories in this category yet.</p>
+              )}
+            </div>
+          </aside>
+
+          {/* Main Content */}
+          <div className="w-full lg:w-3/4 order-1 lg:order-2">
+            <div className="flex items-center gap-4 mb-8">
+              <button
+                onClick={handleLike}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+                  hasLiked 
+                    ? 'bg-red-100 text-red-600' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Heart className={`h-5 w-5 ${hasLiked ? 'fill-red-600' : ''}`} />
+                <span className="font-medium">{likeCount}</span>
+              </button>
+              
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-700">
+                <Eye className="h-5 w-5" />
+                <span className="font-medium">{viewCount}</span>
+              </div>
+              
+              <button
+                onClick={handleCopy}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
+              >
+                {copying ? <Check className="h-5 w-5 text-green-600" /> : <Share2 className="h-5 w-5" />}
+                <span className="font-medium">{copying ? 'Copied!' : 'Share'}</span>
+              </button>
+            </div>
+            
+            {images.length > 1 && (
+              <ImageGalleryCarousel
+                images={coverImagesSet}
+                onOpenImage={(i) => openLightbox(i, coverImagesSet)}
+              />
+            )}
+            
+            <div className="prose prose-lg prose-indigo w-full text-gray-800 leading-relaxed">
+              <div 
+                className="text-xl font-medium text-gray-600 mb-8 border-l-4 border-indigo-500 pl-4 italic"
+                dangerouslySetInnerHTML={{ __html: story.description }}
+              />
+
+              {/* In-content gallery: Now follows the 1-3 grid vs 4+ carousel logic */}
+              {galleryImages.length > 0 && (
+                <ImageGalleryCarousel
+                  images={galleryImages}
+                  onOpenImage={(i) => openLightbox(i, galleryImages)}
+                />
+              )}
+
+              <div 
+                ref={contentRef}
+                className="content-images-hidden"
+                dangerouslySetInnerHTML={{ __html: story.content }}
+              />
+            </div>
           </div>
-          
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
-          >
-            {copying ? <Check className="h-5 w-5 text-green-600" /> : <Share2 className="h-5 w-5" />}
-            <span className="font-medium">{copying ? 'Copied!' : 'Share'}</span>
-          </button>
-        </div>
-        
-        {images.length > 1 && (
-          <ImageGalleryCarousel
-            images={coverImagesSet}
-            onOpenImage={(i) => openLightbox(i, coverImagesSet)}
-          />
-        )}
-        
-        <div className="prose prose-lg prose-indigo mx-auto text-gray-800 leading-relaxed">
-          <div 
-            className="text-xl font-medium text-gray-600 mb-8 border-l-4 border-indigo-500 pl-4 italic"
-            dangerouslySetInnerHTML={{ __html: story.description }}
-          />
-
-          {/* In-content gallery: Now follows the 1-3 grid vs 4+ carousel logic */}
-          {galleryImages.length > 0 && (
-            <ImageGalleryCarousel
-              images={galleryImages}
-              onOpenImage={(i) => openLightbox(i, galleryImages)}
-            />
-          )}
-
-          <div 
-            ref={contentRef}
-            className="content-images-hidden"
-            dangerouslySetInnerHTML={{ __html: story.content }}
-          />
         </div>
       </div>
 
